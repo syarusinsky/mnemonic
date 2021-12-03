@@ -13,7 +13,7 @@
 #include "MidiHandler.hpp"
 #include "PresetManager.hpp"
 #include "AudioSettingsComponent.h"
-#include "STMul8Constants.hpp"
+#include "MnemonicConstants.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -60,7 +60,7 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		// PresetManager presetManager;
 		MidiHandler midiHandler;
 		int lastInputIndex;
-		::AudioBuffer<float> sAudioBuffer;
+		::AudioBuffer<uint16_t> sAudioBuffer;
 
 		juce::AudioFormatWriter* writer;
 

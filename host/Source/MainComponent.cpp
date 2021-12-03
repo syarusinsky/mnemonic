@@ -62,7 +62,7 @@ MainComponent::MainComponent() :
 	char result[pathMax];
 	ssize_t count = readlink( "/proc/self/exe", result, pathMax );
 	std::string assetsPath( result, (count > 0) ? count : 0 );
-	std::string strToRemove( "host/Builds/LinuxMakefile/build/STMul8" );
+	std::string strToRemove( "host/Builds/LinuxMakefile/build/mnemonic" );
 
 	std::string::size_type i = assetsPath.find( strToRemove );
 
@@ -298,16 +298,18 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
 	// bufferToFill.clearActiveBufferRegion();
 	try
 	{
+		const float* inBufferL = bufferToFill.buffer->getReadPointer( 0, bufferToFill.startSample );
+		const float* inBufferR = bufferToFill.buffer->getReadPointer( 1, bufferToFill.startSample );
 		float* writePtrR = bufferToFill.buffer->getWritePointer( 1 );
 		float* writePtrL = bufferToFill.buffer->getWritePointer( 0 );
-		const float* readPtrR = bufferToFill.buffer->getReadPointer( 0 );
 
-		for ( int i = 0; i < bufferToFill.numSamples; i++ )
+		for ( int sample = 0; sample < bufferToFill.numSamples; sample++ )
 		{
-			float value = sAudioBuffer.getNextSample( writePtrR[i] );
-			writePtrR[i] = value;
-			writePtrL[i] = value;
-			// testFile << readPtrR[i] << std::endl;
+			uint16_t sampleToReadBuffer = ( (inBufferL[sample] + 1.0f) * 0.5f ) * 4096.0f;
+			uint16_t sampleOut = sAudioBuffer.getNextSample( sampleToReadBuffer );
+			float sampleOutFloat = static_cast<float>( ((sampleOut / 4096.0f) * 2.0f) - 1.0f );
+			writePtrR[sample] = sampleOutFloat;
+			writePtrL[sample] = sampleOutFloat;
 		}
 
 		sAudioBuffer.pollToFillBuffers();

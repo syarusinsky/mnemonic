@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="DcIhSg" name="STMul8" projectType="guiapp" jucerVersion="5.4.7"
+<JUCERPROJECT id="DcIhSg" name="mnemonic" projectType="guiapp" jucerVersion="5.4.7"
               cppLanguageStandard="11">
   <MAINGROUP id="Nwhz3w" name="FMSynth">
     <GROUP id="{98D80E54-6CF9-BEAB-7DA1-8D820991FECF}" name="Source">
@@ -24,6 +24,8 @@
       <FILE id="tEwTz9" name="AudioBuffer.hpp" compile="0" resource="0" file="../lib/SAL/include/AudioBuffer.hpp"/>
       <FILE id="MoUbH8" name="AudioConstants.hpp" compile="0" resource="0"
             file="../lib/SAL/include/AudioConstants.hpp"/>
+      <FILE id="JeUbH8" name="B12Compression.hpp" compile="0" resource="0"
+            file="../lib/SAL/include/B12Compression.hpp"/>
       <FILE id="kOX25H" name="CPPFile.hpp" compile="0" resource="0" file="../lib/DevLib/include/CPPFile.hpp"/>
       <FILE id="qxccIN" name="IBufferCallback.hpp" compile="0" resource="0"
             file="../lib/SAL/include/IBufferCallback.hpp"/>

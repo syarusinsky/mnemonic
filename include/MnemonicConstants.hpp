@@ -1,5 +1,5 @@
-#ifndef STMUL8CONSTANTS_HPP
-#define STMUL8CONSTANTS_HPP
+#ifndef MNEMONICCONSTANTS_HPP
+#define MNEMONICCONSTANTS_HPP
 
 #include <limits>
 
@@ -16,4 +16,4 @@ enum class BUTTON_CHANNEL : unsigned int
 	EFFECT2 = 1
 };
 
-#endif // STMUL8CONSTANTS_HPP
+#endif // MNEMONICCONSTANTS_HPP
