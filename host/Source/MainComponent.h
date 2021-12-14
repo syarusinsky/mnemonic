@@ -14,6 +14,9 @@
 #include "PresetManager.hpp"
 #include "AudioSettingsComponent.h"
 #include "MnemonicConstants.hpp"
+#include "MnemonicAudioManager.hpp"
+#include "MnemonicUiManager.hpp"
+#include "CPPFile.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -62,6 +65,10 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		int lastInputIndex;
 		::AudioBuffer<uint16_t> sAudioBuffer;
 
+		CPPFile sdCard;
+
+		MnemonicAudioManager audioManager;
+
 		juce::AudioFormatWriter* writer;
 
 		juce::Slider effect1Sldr;
@@ -80,6 +87,8 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		juce::Label midiInputListLbl;
 
 		AudioSettingsComponent audioSettingsComponent;
+
+		MnemonicUiManager uiManager;
 
 		juce::Image screenRep;
 

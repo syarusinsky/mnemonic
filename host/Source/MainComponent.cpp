@@ -34,6 +34,8 @@ MainComponent::MainComponent() :
 	midiHandler(),
 	lastInputIndex( 0 ),
 	sAudioBuffer(),
+	sdCard( "../../../../SDCard.img" ),
+	audioManager( sdCard ),
 	writer(),
 	effect1Sldr(),
 	effect1Lbl(),
@@ -47,6 +49,7 @@ MainComponent::MainComponent() :
 	midiInputList(),
 	midiInputListLbl(),
 	audioSettingsComponent( deviceManager, 2, 2, &audioSettingsBtn ),
+	uiManager( 128, 64, CP_FORMAT::MONOCHROME_1BIT ),
 	screenRep( juce::Image::RGB, 256, 128, true ) // this is actually double the size so we can actually see it
 {
 	// FLUSH DENORMALS TO ZERO!
@@ -87,6 +90,7 @@ MainComponent::MainComponent() :
 	fontFile.close();
 
 	Font* font = new Font( (uint8_t*)fontBytes );
+	uiManager.setFont( font );
 
 	std::ifstream logoFile( logoPath, std::ifstream::binary );
 	if ( ! logoFile )
@@ -112,7 +116,7 @@ MainComponent::MainComponent() :
 	}
 
 	// connecting the audio buffer to the voice manager
-	// sAudioBuffer.registerCallback( &armor8VoiceManager );
+	sAudioBuffer.registerCallback( &audioManager );
 
 	// juce audio device setup
 	juce::AudioDeviceManager::AudioDeviceSetup deviceSetup = juce::AudioDeviceManager::AudioDeviceSetup();
@@ -202,6 +206,11 @@ MainComponent::MainComponent() :
 
 	// grab keyboard focus
 	this->setWantsKeyboardFocus( true );
+
+	// UI initialization
+	uiManager.draw();
+	// TODO need to make an IMnemonicLCDRefreshEventListener later
+	this->copyFrameBufferToImage( 0, 0, 127, 63 );
 }
 
 MainComponent::~MainComponent()
@@ -377,9 +386,8 @@ void MainComponent::buttonClicked (juce::Button* button)
 
 void MainComponent::copyFrameBufferToImage (unsigned int xStart, unsigned int yStart, unsigned int xEnd, unsigned int yEnd)
 {
-	/*
-	ColorProfile* colorProfile = uiSim.getColorProfile();
-	FrameBuffer* frameBuffer = uiSim.getFrameBuffer();
+	ColorProfile* colorProfile = uiManager.getColorProfile();
+	FrameBuffer* frameBuffer = uiManager.getFrameBuffer();
 	unsigned int frameBufferWidth = frameBuffer->getWidth();
 
 	for ( unsigned int pixelY = yStart; pixelY < yEnd + 1; pixelY++ )
@@ -403,7 +411,6 @@ void MainComponent::copyFrameBufferToImage (unsigned int xStart, unsigned int yS
 			}
 		}
 	}
-	*/
 }
 
 void MainComponent::setMidiInput (int index)

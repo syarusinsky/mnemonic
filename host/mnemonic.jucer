@@ -57,6 +57,22 @@
             file="../lib/SIGL/include/ColorProfile.hpp"/>
       <FILE id="wPWgYh" name="Font.cpp" compile="1" resource="0" file="../lib/SIGL/src/Font.cpp"/>
       <FILE id="IPesLA" name="Font.hpp" compile="0" resource="0" file="../lib/SIGL/include/Font.hpp"/>
+      <FILE id="TEWgYh" name="BootSector.cpp" compile="1" resource="0" file="../lib/SFAT/src/BootSector.cpp"/>
+      <FILE id="TEesLA" name="BootSector.hpp" compile="0" resource="0" file="../lib/SFAT/include/BootSector.hpp"/>
+      <FILE id="TwzgYh" name="Fat16Entry.cpp" compile="1" resource="0" file="../lib/SFAT/src/Fat16Entry.cpp"/>
+      <FILE id="TwzsLA" name="Fat16Entry.hpp" compile="0" resource="0" file="../lib/SFAT/include/Fat16Entry.hpp"/>
+      <FILE id="RengYh" name="Fat16FileManager.cpp" compile="1" resource="0"
+            file="../lib/SFAT/src/Fat16FileManager.cpp"/>
+      <FILE id="RensLA" name="Fat16FileManager.hpp" compile="0" resource="0"
+            file="../lib/SFAT/include/Fat16FileManager.hpp"/>
+      <FILE id="VengYh" name="IFatFileManager.cpp" compile="1" resource="0"
+            file="../lib/SFAT/src/IFatFileManager.cpp"/>
+      <FILE id="VensLA" name="IFatFileManager.hpp" compile="0" resource="0"
+            file="../lib/SFAT/include/IFatFileManager.hpp"/>
+      <FILE id="VoRgYh" name="PartitionTable.cpp" compile="1" resource="0"
+            file="../lib/SFAT/src/PartitionTable.cpp"/>
+      <FILE id="VoRsLA" name="PartitionTable.hpp" compile="0" resource="0"
+            file="../lib/SFAT/include/PartitionTable.hpp"/>
       <FILE id="wPWgYh" name="FrameBuffer.cpp" compile="1" resource="0" file="../lib/SIGL/src/FrameBuffer.cpp"/>
       <FILE id="IPesLA" name="FrameBuffer.hpp" compile="0" resource="0" file="../lib/SIGL/include/FrameBuffer.hpp"/>
       <FILE id="IPesLA" name="Graphics.hpp" compile="0" resource="0" file="../lib/SIGL/include/Graphics.hpp"/>
@@ -68,6 +84,14 @@
       <FILE id="IPesLA" name="Sprite.hpp" compile="0" resource="0" file="../lib/SIGL/include/Sprite.hpp"/>
       <FILE id="tz9gYh" name="EventQueue.cpp" compile="1" resource="0" file="../src/EventQueue.cpp"/>
       <FILE id="tz9sLA" name="EventQueue.hpp" compile="0" resource="0" file="../include/EventQueue.hpp"/>
+      <FILE id="W6ngYh" name="MnemonicAudioManager.cpp" compile="1" resource="0"
+            file="../src/MnemonicAudioManager.cpp"/>
+      <FILE id="W6nsLA" name="MnemonicAudioManager.hpp" compile="0" resource="0"
+            file="../include/MnemonicAudioManager.hpp"/>
+      <FILE id="D4ngYh" name="MnemonicUiManager.cpp" compile="1" resource="0"
+            file="../src/MnemonicUiManager.cpp"/>
+      <FILE id="D4nsLA" name="MnemonicUiManager.hpp" compile="0" resource="0"
+            file="../include/MnemonicUiManager.hpp"/>
       <FILE id="wgzgYh" name="ScrollableMenuModel.cpp" compile="1" resource="0"
             file="../src/ScrollableMenuModel.cpp"/>
       <FILE id="IgzsLA" name="ScrollableMenuModel.hpp" compile="0" resource="0"
@@ -85,7 +109,7 @@
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
-    <LINUX_MAKE targetFolder="Builds/LinuxMakefile" extraCompilerFlags="-I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -DSOFTWARE_RENDERING"
+    <LINUX_MAKE targetFolder="Builds/LinuxMakefile" extraCompilerFlags="-I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -I../../../lib/SFAT/include -DSOFTWARE_RENDERING"
                 extraDefs="DONT_SET_USING_JUCE_NAMESPACE">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug"/>

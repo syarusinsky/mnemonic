@@ -39,7 +39,7 @@ ifeq ($(CONFIG),Debug)
   JUCE_CPPFLAGS_APP := -DJucePlugin_Build_VST=0 -DJucePlugin_Build_VST3=0 -DJucePlugin_Build_AU=0 -DJucePlugin_Build_AUv3=0 -DJucePlugin_Build_RTAS=0 -DJucePlugin_Build_AAX=0 -DJucePlugin_Build_Standalone=0 -DJucePlugin_Build_Unity=0
   JUCE_TARGET_APP := mnemonic
 
-  JUCE_CFLAGS += $(JUCE_CPPFLAGS) $(TARGET_ARCH) -g -ggdb -O0 -I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -DSOFTWARE_RENDERING $(CFLAGS)
+  JUCE_CFLAGS += $(JUCE_CPPFLAGS) $(TARGET_ARCH) -g -ggdb -O0 -I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -I../../../lib/SFAT/include -DSOFTWARE_RENDERING $(CFLAGS)
   JUCE_CXXFLAGS += $(JUCE_CFLAGS) -std=c++11 $(CXXFLAGS)
   JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) $(shell pkg-config --libs alsa x11 xinerama xext freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl zlib libjpeg libpng flac vorbis vorbisfile vorbisenc ogg jack) -lrt -ldl -lpthread -lGL $(LDFLAGS)
 
@@ -60,7 +60,7 @@ ifeq ($(CONFIG),Release)
   JUCE_CPPFLAGS_APP := -DJucePlugin_Build_VST=0 -DJucePlugin_Build_VST3=0 -DJucePlugin_Build_AU=0 -DJucePlugin_Build_AUv3=0 -DJucePlugin_Build_RTAS=0 -DJucePlugin_Build_AAX=0 -DJucePlugin_Build_Standalone=0 -DJucePlugin_Build_Unity=0
   JUCE_TARGET_APP := mnemonic
 
-  JUCE_CFLAGS += $(JUCE_CPPFLAGS) $(TARGET_ARCH) -O3 -I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -DSOFTWARE_RENDERING $(CFLAGS)
+  JUCE_CFLAGS += $(JUCE_CPPFLAGS) $(TARGET_ARCH) -O3 -I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -I../../../lib/SFAT/include -DSOFTWARE_RENDERING $(CFLAGS)
   JUCE_CXXFLAGS += $(JUCE_CFLAGS) -std=c++11 $(CXXFLAGS)
   JUCE_LDFLAGS += $(TARGET_ARCH) -L$(JUCE_BINDIR) -L$(JUCE_LIBDIR) $(shell pkg-config --libs alsa x11 xinerama xext freetype2 webkit2gtk-4.0 gtk+-x11-3.0 libcurl zlib libjpeg libpng flac vorbis vorbisfile vorbisenc ogg jack) -fvisibility=hidden -lrt -ldl -lpthread -lGL $(LDFLAGS)
 
@@ -80,10 +80,17 @@ OBJECTS_APP := \
   $(JUCE_OBJDIR)/MidiHandler_d1acf949.o \
   $(JUCE_OBJDIR)/ColorProfile_54fec7c1.o \
   $(JUCE_OBJDIR)/Font_e68320ca.o \
+  $(JUCE_OBJDIR)/BootSector_e38ece88.o \
+  $(JUCE_OBJDIR)/Fat16Entry_d5c777a4.o \
+  $(JUCE_OBJDIR)/Fat16FileManager_58a94483.o \
+  $(JUCE_OBJDIR)/IFatFileManager_8eb446bb.o \
+  $(JUCE_OBJDIR)/PartitionTable_90187d14.o \
   $(JUCE_OBJDIR)/FrameBuffer_dd23fc3c.o \
   $(JUCE_OBJDIR)/SoftwareGraphics_2fefb4d.o \
   $(JUCE_OBJDIR)/Sprite_1f4eb2c0.o \
   $(JUCE_OBJDIR)/EventQueue_64733c86.o \
+  $(JUCE_OBJDIR)/MnemonicAudioManager_ec0dfd48.o \
+  $(JUCE_OBJDIR)/MnemonicUiManager_f8084f12.o \
   $(JUCE_OBJDIR)/ScrollableMenuModel_5fdf1ade.o \
   $(JUCE_OBJDIR)/Surface_6ac201dc.o \
   $(JUCE_OBJDIR)/MainComponent_a6ffb4a5.o \
@@ -176,6 +183,31 @@ $(JUCE_OBJDIR)/Font_e68320ca.o: ../../../lib/SIGL/src/Font.cpp
 	@echo "Compiling Font.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
+$(JUCE_OBJDIR)/BootSector_e38ece88.o: ../../../lib/SFAT/src/BootSector.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling BootSector.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/Fat16Entry_d5c777a4.o: ../../../lib/SFAT/src/Fat16Entry.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling Fat16Entry.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/Fat16FileManager_58a94483.o: ../../../lib/SFAT/src/Fat16FileManager.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling Fat16FileManager.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/IFatFileManager_8eb446bb.o: ../../../lib/SFAT/src/IFatFileManager.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling IFatFileManager.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/PartitionTable_90187d14.o: ../../../lib/SFAT/src/PartitionTable.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling PartitionTable.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
 $(JUCE_OBJDIR)/FrameBuffer_dd23fc3c.o: ../../../lib/SIGL/src/FrameBuffer.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling FrameBuffer.cpp"
@@ -194,6 +226,16 @@ $(JUCE_OBJDIR)/Sprite_1f4eb2c0.o: ../../../lib/SIGL/src/Sprite.cpp
 $(JUCE_OBJDIR)/EventQueue_64733c86.o: ../../../src/EventQueue.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling EventQueue.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/MnemonicAudioManager_ec0dfd48.o: ../../../src/MnemonicAudioManager.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling MnemonicAudioManager.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/MnemonicUiManager_f8084f12.o: ../../../src/MnemonicUiManager.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling MnemonicUiManager.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/ScrollableMenuModel_5fdf1ade.o: ../../../src/ScrollableMenuModel.cpp

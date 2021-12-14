@@ -10,3 +10,6 @@
 [submodule "lib/SIGL"]
 	path = lib/SIGL
 	url = https://github.com/syarusinsky/SIGL.git
+[submodule "lib/SFAT"]
+	path = lib/SFAT
+	url = https://github.com/syarusinsky/SFAT.git
