@@ -56,6 +56,10 @@ MainComponent::MainComponent() :
 	_MM_SET_FLUSH_ZERO_MODE( _MM_FLUSH_ZERO_ON );
 	_MM_SET_DENORMALS_ZERO_MODE( _MM_DENORMALS_ZERO_ON );
 
+	// connecting to event system
+	uiManager.bindToPotEventSystem();
+	uiManager.bindToButtonEventSystem();
+
 	// load font and logo from file
 	char* fontBytes = new char[FONT_FILE_SIZE];
 	char* logoBytes = new char[LOGO_FILE_SIZE];
@@ -264,9 +268,9 @@ void MainComponent::timerCallback()
 	}
 	else
 	{
-		// uiSim.tickForChangingBackToStatus();
-		// uiSim.processEffect1Btn( effect1Btn.isDown() );
-		// uiSim.processEffect2Btn( effect2Btn.isDown() );
+		// uiManager.tickForChangingBackToStatus();
+		uiManager.processEffect1Btn( effect1Btn.isDown() );
+		uiManager.processEffect2Btn( effect2Btn.isDown() );
 
 		double effect1Val = effect1Sldr.getValue();
 		float effect1Percentage = ( effect1Sldr.getValue() - effect1Sldr.getMinimum() )
