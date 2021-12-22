@@ -1,9 +1,7 @@
 #include "MnemonicUiManager.hpp"
 
 #include "Graphics.hpp"
-
-// TODO remove this after testing
-#include <iostream>
+#include "IMnemonicParameterEventListener.hpp"
 
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format) :
 	Surface( width, height, format ),
@@ -135,15 +133,12 @@ void MnemonicUiManager::sendParamEventFromEffectPot (PARAM_CHANNEL param, float 
 	switch ( param )
 	{
 		case PARAM_CHANNEL::TEST_1:
-			std::cout << "Effect pot 1: " << std::to_string(val) << std::endl;
 
 			break;
 		case PARAM_CHANNEL::TEST_2:
-			std::cout << "Effect pot 2: " << std::to_string(val) << std::endl;
 
 			break;
 		case PARAM_CHANNEL::TEST_3:
-			std::cout << "Effect pot 3: " << std::to_string(val) << std::endl;
 
 			break;
 		default:
@@ -279,15 +274,18 @@ void MnemonicUiManager::onButtonEvent (const ButtonEvent& buttonEvent)
 
 void MnemonicUiManager::handleEffect1SinglePress()
 {
-	std::cout << "Effect 1 Button Pressed" << std::endl;
+	IMnemonicParameterEventListener::PublishEvent(
+			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_1)) );
 }
 
 void MnemonicUiManager::handleEffect2SinglePress()
 {
-	std::cout << "Effect 2 Button Pressed" << std::endl;
+	IMnemonicParameterEventListener::PublishEvent(
+			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_2)) );
 }
 
 void MnemonicUiManager::handleDoubleButtonPress()
 {
-	std::cout << "Double Buttons Pressed" << std::endl;
+	IMnemonicParameterEventListener::PublishEvent(
+			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_3)) );
 }

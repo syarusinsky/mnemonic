@@ -1,0 +1,41 @@
+#ifndef IMNEMONICPARAMETEREVENTLISTENER_HPP
+#define IMNEMONICPARAMETEREVENTLISTENER_HPP
+
+/*******************************************************************
+ * An IMnemonicParameterEventListener specifies a simple interface
+ * which a subclass can use to be notified of Mnemonic parameter
+ * change events.
+*******************************************************************/
+
+#include "IEventListener.hpp"
+
+class MnemonicParameterEvent : public IEvent
+{
+	public:
+		MnemonicParameterEvent (float value, unsigned int channel);
+		~MnemonicParameterEvent() override;
+
+		float getValue() const;
+
+	private:
+		float 		m_Value;
+};
+
+class IMnemonicParameterEventListener : public IEventListener
+{
+	public:
+		virtual ~IMnemonicParameterEventListener();
+
+		virtual void onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent) = 0;
+
+		void bindToMnemonicParameterEventSystem();
+		void unbindFromMnemonicParameterEventSystem();
+
+		static void PublishEvent (const MnemonicParameterEvent& paramEvent);
+
+	private:
+		static EventDispatcher<IMnemonicParameterEventListener, MnemonicParameterEvent,
+					&IMnemonicParameterEventListener::onMnemonicParameterEvent> m_EventDispatcher;
+};
+
+#endif // IMNEMONICPARAMETEREVENTLISTENER_HPP

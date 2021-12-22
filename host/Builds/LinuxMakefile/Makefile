@@ -90,6 +90,8 @@ OBJECTS_APP := \
   $(JUCE_OBJDIR)/Sprite_1f4eb2c0.o \
   $(JUCE_OBJDIR)/EventQueue_64733c86.o \
   $(JUCE_OBJDIR)/MnemonicAudioManager_ec0dfd48.o \
+  $(JUCE_OBJDIR)/IMnemonicParameterEventListener_e027daab.o \
+  $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o \
   $(JUCE_OBJDIR)/MnemonicUiManager_f8084f12.o \
   $(JUCE_OBJDIR)/ScrollableMenuModel_5fdf1ade.o \
   $(JUCE_OBJDIR)/Surface_6ac201dc.o \
@@ -231,6 +233,16 @@ $(JUCE_OBJDIR)/EventQueue_64733c86.o: ../../../src/EventQueue.cpp
 $(JUCE_OBJDIR)/MnemonicAudioManager_ec0dfd48.o: ../../../src/MnemonicAudioManager.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling MnemonicAudioManager.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/IMnemonicParameterEventListener_e027daab.o: ../../../src/IMnemonicParameterEventListener.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling IMnemonicParameterEventListener.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/AudioTrack_cc0ee204.o: ../../../src/AudioTrack.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling AudioTrack.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/MnemonicUiManager_f8084f12.o: ../../../src/MnemonicUiManager.cpp

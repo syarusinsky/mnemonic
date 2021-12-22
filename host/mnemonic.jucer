@@ -88,6 +88,12 @@
             file="../src/MnemonicAudioManager.cpp"/>
       <FILE id="W6nsLA" name="MnemonicAudioManager.hpp" compile="0" resource="0"
             file="../include/MnemonicAudioManager.hpp"/>
+      <FILE id="txe5Yh" name="IMnemonicParameterEventListener.cpp" compile="1"
+            resource="0" file="../src/IMnemonicParameterEventListener.cpp"/>
+      <FILE id="txe5LA" name="IMnemonicParameterEventListener.hpp" compile="0"
+            resource="0" file="../include/IMnemonicParameterEventListener.hpp"/>
+      <FILE id="bd95Yh" name="AudioTrack.cpp" compile="1" resource="0" file="../src/AudioTrack.cpp"/>
+      <FILE id="bd95LA" name="AudioTrack.hpp" compile="0" resource="0" file="../include/AudioTrack.hpp"/>
       <FILE id="D4ngYh" name="MnemonicUiManager.cpp" compile="1" resource="0"
             file="../src/MnemonicUiManager.cpp"/>
       <FILE id="D4nsLA" name="MnemonicUiManager.hpp" compile="0" resource="0"

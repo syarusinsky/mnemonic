@@ -34,7 +34,7 @@ MainComponent::MainComponent() :
 	midiHandler(),
 	lastInputIndex( 0 ),
 	sAudioBuffer(),
-	sdCard( "../../../../SDCard.img" ),
+	sdCard( "SDCard.img" ),
 	audioManager( sdCard ),
 	writer(),
 	effect1Sldr(),
@@ -57,6 +57,7 @@ MainComponent::MainComponent() :
 	_MM_SET_DENORMALS_ZERO_MODE( _MM_DENORMALS_ZERO_ON );
 
 	// connecting to event system
+	audioManager.bindToMnemonicParameterEventSystem();
 	uiManager.bindToPotEventSystem();
 	uiManager.bindToButtonEventSystem();
 
