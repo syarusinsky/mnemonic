@@ -91,7 +91,10 @@ OBJECTS_APP := \
   $(JUCE_OBJDIR)/EventQueue_64733c86.o \
   $(JUCE_OBJDIR)/MnemonicAudioManager_ec0dfd48.o \
   $(JUCE_OBJDIR)/IMnemonicParameterEventListener_e027daab.o \
+  $(JUCE_OBJDIR)/IMnemonicUiEventListener_db0c73de.o \
+  $(JUCE_OBJDIR)/IMnemonicLCDRefreshEventListener_d5c03264.o \
   $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o \
+  $(JUCE_OBJDIR)/IAllocator_5df50da8.o \
   $(JUCE_OBJDIR)/MnemonicUiManager_f8084f12.o \
   $(JUCE_OBJDIR)/ScrollableMenuModel_5fdf1ade.o \
   $(JUCE_OBJDIR)/Surface_6ac201dc.o \
@@ -240,9 +243,24 @@ $(JUCE_OBJDIR)/IMnemonicParameterEventListener_e027daab.o: ../../../src/IMnemoni
 	@echo "Compiling IMnemonicParameterEventListener.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
+$(JUCE_OBJDIR)/IMnemonicUiEventListener_db0c73de.o: ../../../src/IMnemonicUiEventListener.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling IMnemonicUiEventListener.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/IMnemonicLCDRefreshEventListener_d5c03264.o: ../../../src/IMnemonicLCDRefreshEventListener.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling IMnemonicLCDRefreshEventListener.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
 $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o: ../../../src/AudioTrack.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling AudioTrack.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/IAllocator_5df50da8.o: ../../../lib/DevLib/src/IAllocator.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling IAllocator.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/MnemonicUiManager_f8084f12.o: ../../../src/MnemonicUiManager.cpp

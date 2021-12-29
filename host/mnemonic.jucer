@@ -92,8 +92,18 @@
             resource="0" file="../src/IMnemonicParameterEventListener.cpp"/>
       <FILE id="txe5LA" name="IMnemonicParameterEventListener.hpp" compile="0"
             resource="0" file="../include/IMnemonicParameterEventListener.hpp"/>
+      <FILE id="g5D5Yh" name="IMnemonicUiEventListener.cpp" compile="1" resource="0"
+            file="../src/IMnemonicUiEventListener.cpp"/>
+      <FILE id="g5D5LA" name="IMnemonicUiEventListener.hpp" compile="0" resource="0"
+            file="../include/IMnemonicUiEventListener.hpp"/>
+      <FILE id="S5D5Yh" name="IMnemonicLCDRefreshEventListener.cpp" compile="1"
+            resource="0" file="../src/IMnemonicLCDRefreshEventListener.cpp"/>
+      <FILE id="S5D5LA" name="IMnemonicLCDRefreshEventListener.hpp" compile="0"
+            resource="0" file="../include/IMnemonicLCDRefreshEventListener.hpp"/>
       <FILE id="bd95Yh" name="AudioTrack.cpp" compile="1" resource="0" file="../src/AudioTrack.cpp"/>
       <FILE id="bd95LA" name="AudioTrack.hpp" compile="0" resource="0" file="../include/AudioTrack.hpp"/>
+      <FILE id="Ge95Yh" name="IAllocator.cpp" compile="1" resource="0" file="../lib/DevLib/src/IAllocator.cpp"/>
+      <FILE id="Ge95LA" name="IAllocator.hpp" compile="0" resource="0" file="../lib/DevLib/include/IAllocator.hpp"/>
       <FILE id="D4ngYh" name="MnemonicUiManager.cpp" compile="1" resource="0"
             file="../src/MnemonicUiManager.cpp"/>
       <FILE id="D4nsLA" name="MnemonicUiManager.hpp" compile="0" resource="0"

@@ -6,6 +6,9 @@
 constexpr unsigned int MNEMONIC_POT_STABIL_NUM = 50; // pot stabilization stuff
 constexpr float MNEMONIC_POT_MENU_CHANGE_THRESH = 0.5f; // threshold to break for a status submenu change
 
+constexpr unsigned int MNEMONIC_PARAMETER_EVENT_QUEUE_SIZE = 1000;
+constexpr unsigned int MNEMONIC_UI_EVENT_QUEUE_SIZE = 10;
+
 enum class PARAM_CHANNEL : unsigned int
 {
 	NULL_PARAM 	= 0,

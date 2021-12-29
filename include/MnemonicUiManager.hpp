@@ -13,14 +13,16 @@
 #include "Surface.hpp"
 
 #include <stdint.h>
+#include <string>
 
 #include "MnemonicConstants.hpp"
+#include "IMnemonicUiEventListener.hpp"
 #include "IPotEventListener.hpp"
 #include "IButtonEventListener.hpp"
 
 class Font;
 
-class MnemonicUiManager : public Surface, public IPotEventListener, public IButtonEventListener
+class MnemonicUiManager : public Surface, public IPotEventListener, public IButtonEventListener, public IMnemonicUiEventListener
 {
 	public:
 		MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format);
@@ -36,6 +38,8 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 
 		void processEffect1Btn (bool pressed);
 		void processEffect2Btn (bool pressed);
+
+		void onMnemonicUiEvent (const MnemonicUiEvent& event) override;
 
 	private:
 		// the parameters each effect pot is currently assigned to
@@ -81,6 +85,8 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 
 		bool hasBrokenLock (bool& potLockedVal, float& potCachedVal, float newPotVal);
 		bool hasBrokenMenuChangeThreshold (float newVal, float cachedVal);
+
+		void displayErrorMessage (const std::string& errorMessage);
 };
 
 #endif // MNEMONICUIMANAGER_HPP

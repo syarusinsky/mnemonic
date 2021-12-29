@@ -34,8 +34,9 @@ MainComponent::MainComponent() :
 	midiHandler(),
 	lastInputIndex( 0 ),
 	sAudioBuffer(),
+	fakeAxiSram{ 0 },
 	sdCard( "SDCard.img" ),
-	audioManager( sdCard ),
+	audioManager( sdCard, fakeAxiSram, sizeof(fakeAxiSram) ),
 	writer(),
 	effect1Sldr(),
 	effect1Lbl(),
@@ -57,9 +58,11 @@ MainComponent::MainComponent() :
 	_MM_SET_DENORMALS_ZERO_MODE( _MM_DENORMALS_ZERO_ON );
 
 	// connecting to event system
+	this->bindToMnemonicLCDRefreshEventSystem();
 	audioManager.bindToMnemonicParameterEventSystem();
 	uiManager.bindToPotEventSystem();
 	uiManager.bindToButtonEventSystem();
+	uiManager.bindToMnemonicUiEventSystem();
 
 	// load font and logo from file
 	char* fontBytes = new char[FONT_FILE_SIZE];
@@ -203,6 +206,12 @@ MainComponent::MainComponent() :
 	// you add any child components.
 	setSize( 800, 600 );
 
+	// UI initialization
+	uiManager.draw();
+
+	// verify filesystem
+	audioManager.verifyFileSystem();
+
 	// ARMor8PresetUpgrader presetUpgrader( initPreset, armor8VoiceManager.getPresetHeader() );
 	// presetManager.upgradePresets( &presetUpgrader );
 
@@ -211,11 +220,6 @@ MainComponent::MainComponent() :
 
 	// grab keyboard focus
 	this->setWantsKeyboardFocus( true );
-
-	// UI initialization
-	uiManager.draw();
-	// TODO need to make an IMnemonicLCDRefreshEventListener later
-	this->copyFrameBufferToImage( 0, 0, 127, 63 );
 }
 
 MainComponent::~MainComponent()
@@ -443,4 +447,11 @@ void MainComponent::handleIncomingMidiMessage (juce::MidiInput *source, const ju
 	}
 
 	midiHandler.dispatchEvents();
+}
+
+void MainComponent::onMnemonicLCDRefreshEvent (const MnemonicLCDRefreshEvent& lcdRefreshEvent)
+{
+	this->copyFrameBufferToImage( lcdRefreshEvent.getXStart(), lcdRefreshEvent.getYStart(),
+					lcdRefreshEvent.getXEnd(), lcdRefreshEvent.getYEnd() );
+	this->repaint();
 }

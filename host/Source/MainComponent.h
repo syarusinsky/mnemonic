@@ -16,6 +16,7 @@
 #include "MnemonicConstants.hpp"
 #include "MnemonicAudioManager.hpp"
 #include "MnemonicUiManager.hpp"
+#include "IMnemonicLCDRefreshEventListener.hpp"
 #include "CPPFile.hpp"
 
 #include <iostream>
@@ -27,7 +28,7 @@
    your controls and content.
    */
 class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Listener, public juce::Button::Listener,
-			public juce::MidiInputCallback, public juce::Timer
+			public juce::MidiInputCallback, public juce::Timer, public IMnemonicLCDRefreshEventListener
 {
 	public:
 		//==============================================================================
@@ -57,6 +58,8 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		void setMidiInput (int index);
 		void handleIncomingMidiMessage (juce::MidiInput *source, const juce::MidiMessage &message) override;
 
+		void onMnemonicLCDRefreshEvent (const MnemonicLCDRefreshEvent& lcdRefreshEvent) override;
+
 	private:
 		//==============================================================================
 		// Your private member variables go here...
@@ -64,6 +67,8 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		MidiHandler midiHandler;
 		int lastInputIndex;
 		::AudioBuffer<uint16_t> sAudioBuffer;
+
+		uint8_t fakeAxiSram[524288]; // 512kB
 
 		CPPFile sdCard;
 

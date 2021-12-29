@@ -2,6 +2,7 @@
 
 #include "Graphics.hpp"
 #include "IMnemonicParameterEventListener.hpp"
+#include "IMnemonicLCDRefreshEventListener.hpp"
 
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format) :
 	Surface( width, height, format ),
@@ -44,6 +45,9 @@ void MnemonicUiManager::draw()
 {
 	m_Graphics->setColor( true );
 	m_Graphics->fill();
+
+	IMnemonicLCDRefreshEventListener::PublishEvent(
+			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
 }
 
 void MnemonicUiManager::onPotEvent (const PotEvent& potEvent)
@@ -288,4 +292,31 @@ void MnemonicUiManager::handleDoubleButtonPress()
 {
 	IMnemonicParameterEventListener::PublishEvent(
 			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_3)) );
+}
+
+void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
+{
+	UiEventType eventType = event.getEventType();
+
+	switch ( eventType )
+	{
+		case UiEventType::INVALID_FILESYSTEM:
+			this->displayErrorMessage( "INVALID FILESYS" );
+
+			break;
+		default:
+			break;
+	}
+}
+
+void MnemonicUiManager::displayErrorMessage (const std::string& errorMessage)
+{
+	m_Graphics->setColor( false );
+	m_Graphics->fill();
+
+	m_Graphics->setColor( true );
+	m_Graphics->drawText( 0.1f, 0.1f, errorMessage.c_str(), 1.0f );
+
+	IMnemonicLCDRefreshEventListener::PublishEvent(
+			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
 }

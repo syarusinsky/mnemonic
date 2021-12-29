@@ -1,15 +1,14 @@
 #include "MnemonicAudioManager.hpp"
 
+#include "IMnemonicUiEventListener.hpp"
 #include "AudioConstants.hpp"
 #include <string.h>
 #include "B12Compression.hpp"
 
-// TODO remove after testing
-#include <iostream>
-
-MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& storageMedia) :
-	m_FileManager( storageMedia ),
-	m_AudioTrack( m_FileManager.getActiveBootSector()->getSectorSizeInBytes() ),
+MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
+	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
+	m_FileManager( sdCard, &m_AxiSramAllocator ),
+	m_AudioTrack( m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator ),
 	m_AudioTrackEntry( nullptr ),
 	m_CompressedBufferSize( m_FileManager.getActiveBootSector()->getSectorSizeInBytes() ),
 	m_CompressedCircularBufferSize( m_CompressedBufferSize * 3 ),
@@ -20,13 +19,6 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& storageMedia) :
 	m_Recording( false ),
 	m_PlayingBack( false )
 {
-	if ( ! m_FileManager.isValidFatFileSystem() )
-	{
-		std::cout << "NOT VALID FAT FILE SYSTEM, SHUTTING DOWN" << std::endl;
-		std::exit( 0 );
-	}
-
-	this->deleteExistingFile();
 }
 
 MnemonicAudioManager::~MnemonicAudioManager()
@@ -34,24 +26,26 @@ MnemonicAudioManager::~MnemonicAudioManager()
 	if ( m_AudioTrackEntry ) delete m_AudioTrackEntry;
 }
 
+void MnemonicAudioManager::verifyFileSystem()
+{
+	if ( ! m_FileManager.isValidFatFileSystem() )
+	{
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::INVALID_FILESYSTEM, 0) );
+		this->unbindFromMnemonicParameterEventSystem();
+	}
+	else
+	{
+		this->deleteExistingFile();
+	}
+}
+
 void MnemonicAudioManager::call (uint16_t* writeBuffer)
 {
 	if ( m_Recording && m_AudioTrackEntry && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
 	{
-		// TODO remove this after testing
-		/*
-		for ( unsigned int sample = 0; sample < ABUFFER_SIZE; sample++ )
-		{
-			writeBuffer[sample] = 0x0101;
-		}
-		*/
-
 		const unsigned int compressedDataSize = ( ABUFFER_SIZE * 2.0f ) * 0.75f;
 
-		if ( ! B12Compress(writeBuffer, ABUFFER_SIZE, &m_CompressedCircularBuffer[m_CompressedCircularBufferIncr], compressedDataSize) )
-		{
-			std::cout << "ERROR WHEN COMPRESSING!" << std::endl;
-		}
+		B12Compress( writeBuffer, ABUFFER_SIZE, &m_CompressedCircularBuffer[m_CompressedCircularBufferIncr], compressedDataSize );
 
 		for ( unsigned int byte = 0; byte < compressedDataSize; byte++ )
 		{
@@ -60,10 +54,7 @@ void MnemonicAudioManager::call (uint16_t* writeBuffer)
 			m_RecordDataToWriteIncr++;
 			if ( m_RecordDataToWriteIncr == m_CompressedBufferSize * 3 )
 			{
-				if ( ! m_FileManager.writeToEntry(*m_AudioTrackEntry, m_RecordDataToWrite) )
-				{
-					std::cout << "FAILURE WRITING!" << std::endl;
-				}
+				m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
 
 				m_RecordDataToWriteIncr = 0;
 			}
@@ -83,23 +74,12 @@ void MnemonicAudioManager::call (uint16_t* writeBuffer)
 			else
 			{
 				m_PlayingBack = false;
-				std::cout << "ENDING PLAYBACK" << std::endl;
 
 				return;
 			}
 		}
 
 		m_AudioTrack.call( writeBuffer );
-		// TODO remove this after testing
-		/*
-		for ( unsigned int sample = 0; sample < ABUFFER_SIZE; sample++ )
-		{
-			if ( writeBuffer[sample] != 0x0101 )
-			{
-				writeBuffer[sample] = 0x0101;
-			}
-		}
-		*/
 	}
 }
 
@@ -115,7 +95,6 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			this->deleteExistingFile();
 			this->createFile();
 			m_Recording = true;
-			std::cout << "Created audio file" << std::endl;
 
 			break;
 		case PARAM_CHANNEL::TEST_2:
@@ -123,7 +102,6 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			if ( m_Recording && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
 			{
 				m_FileManager.finalizeEntry( *m_AudioTrackEntry );
-				std::cout << "Finalized audio file" << std::endl;
 			}
 			m_Recording = false;
 			m_PlayingBack = false;
@@ -136,8 +114,6 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 				m_AudioTrack.reset();
 				m_FileManager.readEntry( *m_AudioTrackEntry );
 				m_PlayingBack = true;
-
-				std::cout << "Playback started" << std::endl;
 			}
 
 			break;
@@ -154,13 +130,12 @@ void MnemonicAudioManager::deleteExistingFile()
 
 	// look for the audio track in the file system
 	unsigned int oldFileIndex = 0;
-	std::vector<Fat16Entry>& entriesInRoot = m_FileManager.getCurrentDirectoryEntries();
-	for ( const Fat16Entry& entry : entriesInRoot )
+	std::vector<Fat16Entry*>& entriesInRoot = m_FileManager.getCurrentDirectoryEntries();
+	for ( const Fat16Entry* entry : entriesInRoot )
 	{
-		if ( strcmp(entry.getFilenameDisplay(), trackEntryName) == 0 )
+		if ( strcmp(entry->getFilenameDisplay(), trackEntryName) == 0 && ! entry->isDeletedEntry() )
 		{
 			m_FileManager.deleteEntry( oldFileIndex );
-			std::cout << "Found existing file, deleting" << std::endl;
 
 			break;
 		}
@@ -174,4 +149,22 @@ void MnemonicAudioManager::createFile()
 	m_AudioTrackEntry = new Fat16Entry( "tmpAud", "b12" );
 
 	m_FileManager.createEntry( *m_AudioTrackEntry );
+}
+
+void MnemonicAudioManager::testFileCreationAndWrite()
+{
+	this->deleteExistingFile();
+	this->createFile();
+
+	for ( unsigned int byte = 0; byte < m_RecordDataToWrite.getSizeInBytes(); byte++ )
+	{
+		m_RecordDataToWrite[byte] = 55;
+	}
+
+	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
+	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
+	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
+	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
+
+	m_FileManager.finalizeEntry( *m_AudioTrackEntry );
 }
