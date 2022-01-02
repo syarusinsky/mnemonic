@@ -12,7 +12,7 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 	m_AudioTrackEntry( nullptr ),
 	m_CompressedBufferSize( m_FileManager.getActiveBootSector()->getSectorSizeInBytes() ),
 	m_CompressedCircularBufferSize( m_CompressedBufferSize * 3 ),
-	m_CompressedCircularBuffer( new uint8_t[m_CompressedCircularBufferSize] ),
+	m_CompressedCircularBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(m_CompressedCircularBufferSize) ),
 	m_CompressedCircularBufferIncr( 0 ),
 	m_RecordDataToWrite( SharedData<uint8_t>::MakeSharedData(m_CompressedBufferSize * 3) ),
 	m_RecordDataToWriteIncr( 0 ),
@@ -23,7 +23,7 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 
 MnemonicAudioManager::~MnemonicAudioManager()
 {
-	if ( m_AudioTrackEntry ) delete m_AudioTrackEntry;
+	if ( m_AudioTrackEntry ) m_AxiSramAllocator.free<Fat16Entry>( m_AudioTrackEntry );
 }
 
 void MnemonicAudioManager::verifyFileSystem()
@@ -91,13 +91,17 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 	switch ( channel )
 	{
 		case PARAM_CHANNEL::TEST_1:
+			this->testFileCreationAndWrite();
+			/*
 			// record
 			this->deleteExistingFile();
 			this->createFile();
 			m_Recording = true;
+			*/
 
 			break;
 		case PARAM_CHANNEL::TEST_2:
+			/*
 			// stop
 			if ( m_Recording && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
 			{
@@ -105,9 +109,11 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			}
 			m_Recording = false;
 			m_PlayingBack = false;
+			*/
 
 			break;
 		case PARAM_CHANNEL::TEST_3:
+			/*
 			// play
 			if ( ! m_Recording && m_AudioTrackEntry )
 			{
@@ -115,6 +121,7 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 				m_FileManager.readEntry( *m_AudioTrackEntry );
 				m_PlayingBack = true;
 			}
+			*/
 
 			break;
 		default:
@@ -124,7 +131,7 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 
 void MnemonicAudioManager::deleteExistingFile()
 {
-	if ( m_AudioTrackEntry ) delete m_AudioTrackEntry;
+	if ( m_AudioTrackEntry ) m_AxiSramAllocator.free<Fat16Entry>( m_AudioTrackEntry );
 
 	const char* trackEntryName = "tmpAud.b12";
 
@@ -146,7 +153,7 @@ void MnemonicAudioManager::deleteExistingFile()
 
 void MnemonicAudioManager::createFile()
 {
-	m_AudioTrackEntry = new Fat16Entry( "tmpAud", "b12" );
+	m_AudioTrackEntry = m_AxiSramAllocator.allocate<Fat16Entry>( "tmpAud", "b12" );
 
 	m_FileManager.createEntry( *m_AudioTrackEntry );
 }
