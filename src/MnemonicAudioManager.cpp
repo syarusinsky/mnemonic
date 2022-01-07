@@ -91,17 +91,13 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 	switch ( channel )
 	{
 		case PARAM_CHANNEL::TEST_1:
-			this->testFileCreationAndWrite();
-			/*
 			// record
 			this->deleteExistingFile();
 			this->createFile();
 			m_Recording = true;
-			*/
 
 			break;
 		case PARAM_CHANNEL::TEST_2:
-			/*
 			// stop
 			if ( m_Recording && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
 			{
@@ -109,11 +105,9 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			}
 			m_Recording = false;
 			m_PlayingBack = false;
-			*/
 
 			break;
 		case PARAM_CHANNEL::TEST_3:
-			/*
 			// play
 			if ( ! m_Recording && m_AudioTrackEntry )
 			{
@@ -121,7 +115,6 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 				m_FileManager.readEntry( *m_AudioTrackEntry );
 				m_PlayingBack = true;
 			}
-			*/
 
 			break;
 		default:
@@ -156,22 +149,4 @@ void MnemonicAudioManager::createFile()
 	m_AudioTrackEntry = m_AxiSramAllocator.allocate<Fat16Entry>( "tmpAud", "b12" );
 
 	m_FileManager.createEntry( *m_AudioTrackEntry );
-}
-
-void MnemonicAudioManager::testFileCreationAndWrite()
-{
-	this->deleteExistingFile();
-	this->createFile();
-
-	for ( unsigned int byte = 0; byte < m_RecordDataToWrite.getSizeInBytes(); byte++ )
-	{
-		m_RecordDataToWrite[byte] = 55;
-	}
-
-	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
-	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
-	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
-	m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
-
-	m_FileManager.finalizeEntry( *m_AudioTrackEntry );
 }

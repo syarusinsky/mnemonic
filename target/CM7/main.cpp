@@ -364,9 +364,9 @@ int main(void)
 	LLPD::usart_log( LOGGING_USART_NUM, "op amp initialized..." );
 
 	// spi initialization
-	LLPD::spi_master_init( OLED_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_256, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
+	LLPD::spi_master_init( OLED_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_32, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
 				SPI_DUPLEX::FULL, SPI_FRAME_FORMAT::MSB_FIRST, SPI_DATA_SIZE::BITS_8 );
-	LLPD::spi_master_init( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_256, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
+	LLPD::spi_master_init( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_2, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
 			SPI_DUPLEX::FULL, SPI_FRAME_FORMAT::MSB_FIRST, SPI_DATA_SIZE::BITS_8 );
 	// LLPD::usart_log( LOGGING_USART_NUM, "spi initialized..." );
 
@@ -402,12 +402,11 @@ int main(void)
 	Eeprom_CAT24C64_Manager_ARMor8 eeproms( EEPROM_I2C_NUM, eepromAddressConfigs );
 
 	// SD Card setup
-	LLPD::gpio_output_setup( SD_CARD_CS_PORT, SD_CARD_CS_PIN, GPIO_PUPD::PULL_UP, GPIO_OUTPUT_TYPE::PUSH_PULL, GPIO_OUTPUT_SPEED::HIGH, false );
+	LLPD::gpio_output_setup( SD_CARD_CS_PORT, SD_CARD_CS_PIN, GPIO_PUPD::PULL_UP, GPIO_OUTPUT_TYPE::OPEN_DRAIN, GPIO_OUTPUT_SPEED::VERY_HIGH, false );
 	LLPD::gpio_output_set( SD_CARD_CS_PORT, SD_CARD_CS_PIN, true );
 	SDCard sdCard( SD_CARD_SPI_NUM, SD_CARD_CS_PORT, SD_CARD_CS_PIN );
 	sdCard.initialize();
-	// TODO bring back the baud rate boost after testing
-	// LLPD::spi_master_change_baud_rate( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_64 );
+	LLPD::spi_master_change_baud_rate( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_2 );
 	// LLPD::usart_log( LOGGING_USART_NUM, "sd card initialized..." );
 
 	// LLPD::usart_log( LOGGING_USART_NUM, "Ultra_FX_SYN setup complete, entering while loop -------------------------------" );

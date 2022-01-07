@@ -26,8 +26,6 @@ class MnemonicAudioManager : public IBufferCallback<uint16_t>, public IMnemonicP
 
 		void call (uint16_t* writeBuffer) override;
 
-		void testFileCreationAndWrite();
-
 		void onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent) override;
 
 	private:
