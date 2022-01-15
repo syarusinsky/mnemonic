@@ -212,6 +212,9 @@ MainComponent::MainComponent() :
 	// verify filesystem
 	audioManager.verifyFileSystem();
 
+	// TODO remove this after testing
+	audioManager.testFileShit();
+
 	// ARMor8PresetUpgrader presetUpgrader( initPreset, armor8VoiceManager.getPresetHeader() );
 	// presetManager.upgradePresets( &presetUpgrader );
 

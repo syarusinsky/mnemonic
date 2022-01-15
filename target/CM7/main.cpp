@@ -321,6 +321,7 @@ int main(void)
 {
 	// setup clock 480MHz (also prescales peripheral clocks to fit rate limitations)
 	LLPD::rcc_clock_start_max_cpu1();
+	LLPD::rcc_start_pll2();
 
 	// enable gpio clocks
 	LLPD::gpio_enable_clock( GPIO_PORT::A );
@@ -344,7 +345,7 @@ int main(void)
 					USART_STOP_BITS::BITS_1, 120000000, 31250 );
 
 	// audio timer setup (for 40 kHz sampling rate at 480 MHz timer clock)
-	LLPD::tim6_counter_setup( 3, 3000, 40000 );
+	LLPD::tim6_counter_setup( 0, 12000, 40000 );
 	LLPD::tim6_counter_enable_interrupts();
 	// LLPD::usart_log( LOGGING_USART_NUM, "tim6 initialized..." );
 
@@ -366,8 +367,8 @@ int main(void)
 	// spi initialization
 	LLPD::spi_master_init( OLED_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_32, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
 				SPI_DUPLEX::FULL, SPI_FRAME_FORMAT::MSB_FIRST, SPI_DATA_SIZE::BITS_8 );
-	LLPD::spi_master_init( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_2, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
-			SPI_DUPLEX::FULL, SPI_FRAME_FORMAT::MSB_FIRST, SPI_DATA_SIZE::BITS_8 );
+	LLPD::spi_master_init( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_32, SPI_CLK_POL::LOW_IDLE, SPI_CLK_PHASE::FIRST,
+				SPI_DUPLEX::FULL, SPI_FRAME_FORMAT::MSB_FIRST, SPI_DATA_SIZE::BITS_8 );
 	// LLPD::usart_log( LOGGING_USART_NUM, "spi initialized..." );
 
 	// i2c initialization
@@ -385,7 +386,7 @@ int main(void)
 	LLPD::gpio_analog_setup( AUDIO_IN_PORT, AUDIO1_IN_PIN );
 	LLPD::gpio_analog_setup( AUDIO_IN_PORT, AUDIO2_IN_PIN );
 	LLPD::adc_init( ADC_NUM::ADC_1_2, ADC_CYCLES_PER_SAMPLE::CPS_64p5 );
-	LLPD::adc_init( ADC_NUM::ADC_3, ADC_CYCLES_PER_SAMPLE::CPS_32p5 );
+	LLPD::adc_init( ADC_NUM::ADC_3, ADC_CYCLES_PER_SAMPLE::CPS_1p5 );
 	LLPD::adc_set_channel_order( ADC_NUM::ADC_1_2, 3, EFFECT1_ADC_CHANNEL, EFFECT2_ADC_CHANNEL, EFFECT3_ADC_CHANNEL );
 	LLPD::adc_set_channel_order( ADC_NUM::ADC_3, 2, AUDIO1_IN_ADC_CHANNEL, AUDIO2_IN_ADC_CHANNEL );
 
@@ -406,6 +407,7 @@ int main(void)
 	LLPD::gpio_output_set( SD_CARD_CS_PORT, SD_CARD_CS_PIN, true );
 	SDCard sdCard( SD_CARD_SPI_NUM, SD_CARD_CS_PORT, SD_CARD_CS_PIN );
 	sdCard.initialize();
+	// boost SPI clock after initialization
 	LLPD::spi_master_change_baud_rate( SD_CARD_SPI_NUM, SPI_BAUD_RATE::SYSCLK_DIV_BY_2 );
 	// LLPD::usart_log( LOGGING_USART_NUM, "sd card initialized..." );
 
