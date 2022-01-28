@@ -16,7 +16,7 @@
 
 class IStorageMedia;
 
-class MnemonicAudioManager : public IBufferCallback<uint16_t>, public IMnemonicParameterEventListener
+class MnemonicAudioManager : public IBufferCallback<int16_t>, public IMnemonicParameterEventListener
 {
 	public:
 		MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSramPtr, unsigned int axiSramSizeInBytes);
@@ -24,28 +24,21 @@ class MnemonicAudioManager : public IBufferCallback<uint16_t>, public IMnemonicP
 
 		void verifyFileSystem(); // should be called on boot up at the very least
 
-		void call (uint16_t* writeBuffer) override;
+		void call (int16_t* writeBuffer) override;
 
 		void onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent) override;
 
 	private:
-		IAllocator 		m_AxiSramAllocator;
-		Fat16FileManager 	m_FileManager;
-		AudioTrack 		m_AudioTrack;
-		Fat16Entry* 		m_AudioTrackEntry;
+		IAllocator 			m_AxiSramAllocator;
+		Fat16FileManager 		m_FileManager;
 
-		unsigned int 		m_CompressedBufferSize;
-		unsigned int 		m_CompressedCircularBufferSize;
-		uint8_t* 		m_CompressedCircularBuffer;
-		unsigned int 		m_CompressedCircularBufferIncr;
-		SharedData<uint8_t> 	m_RecordDataToWrite;
-		unsigned int 		m_RecordDataToWriteIncr;
+		std::vector<AudioTrack> 	m_AudioTracks;
 
-		bool 			m_Recording;
-		bool 			m_PlayingBack;
+		uint16_t* 			m_DecompressedBuffer; // for holding decompressed audio buffers for all audio tracks
 
-		void deleteExistingFile();
-		void createFile();
+		void loadFile (unsigned int index);
+
+		void enterFileExplorer();
 };
 
 #endif // MNEMONICAUDIOMANAGER_HPP

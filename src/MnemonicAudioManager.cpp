@@ -5,116 +5,54 @@
 #include <string.h>
 #include "B12Compression.hpp"
 
+#include <iostream>
+
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
 	m_FileManager( sdCard, &m_AxiSramAllocator ),
-	m_AudioTrack( m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator ),
-	m_AudioTrackEntry( nullptr ),
-	m_CompressedBufferSize( m_FileManager.getActiveBootSector()->getSectorSizeInBytes() ),
-	m_CompressedCircularBufferSize( m_CompressedBufferSize * 3 ),
-	m_CompressedCircularBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(m_CompressedCircularBufferSize) ),
-	m_CompressedCircularBufferIncr( 0 ),
-	m_RecordDataToWrite( SharedData<uint8_t>::MakeSharedData(m_CompressedBufferSize * 3) ),
-	m_RecordDataToWriteIncr( 0 ),
-	m_Recording( false ),
-	m_PlayingBack( false )
+	m_AudioTracks(),
+	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) )
 {
 }
 
 MnemonicAudioManager::~MnemonicAudioManager()
 {
-	if ( m_AudioTrackEntry ) m_AxiSramAllocator.free<Fat16Entry>( m_AudioTrackEntry );
 }
 
 void MnemonicAudioManager::verifyFileSystem()
 {
 	if ( ! m_FileManager.isValidFatFileSystem() )
 	{
-		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::INVALID_FILESYSTEM, 0) );
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::INVALID_FILESYSTEM, nullptr, 0, 0) );
 		this->unbindFromMnemonicParameterEventSystem();
 	}
 	else
 	{
-		this->deleteExistingFile();
+		this->enterFileExplorer();
 	}
 }
 
-void MnemonicAudioManager::call (uint16_t* writeBuffer)
+void MnemonicAudioManager::call (int16_t* writeBuffer)
 {
-	if ( m_Recording && m_AudioTrackEntry && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
+	memset( writeBuffer, 0, ABUFFER_SIZE * sizeof(int16_t) );
+
+	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
-		const unsigned int compressedDataSize = ( ABUFFER_SIZE * 2.0f ) * 0.75f;
-
-		B12Compress( writeBuffer, ABUFFER_SIZE, &m_CompressedCircularBuffer[m_CompressedCircularBufferIncr], compressedDataSize );
-
-		for ( unsigned int byte = 0; byte < compressedDataSize; byte++ )
-		{
-			m_RecordDataToWrite[m_RecordDataToWriteIncr] = m_CompressedCircularBuffer[m_CompressedCircularBufferIncr + byte];
-
-			m_RecordDataToWriteIncr++;
-			if ( m_RecordDataToWriteIncr == m_CompressedBufferSize * 3 )
-			{
-				m_FileManager.writeToEntry( *m_AudioTrackEntry, m_RecordDataToWrite );
-
-				m_RecordDataToWriteIncr = 0;
-			}
-		}
-
-		m_CompressedCircularBufferIncr = ( m_CompressedCircularBufferIncr + compressedDataSize ) % m_CompressedCircularBufferSize;
+		audioTrack.call( writeBuffer );
 	}
-	else if ( m_PlayingBack && m_AudioTrackEntry && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
-	{
-		while ( m_AudioTrack.shouldFillNextBuffer() )
-		{
-			SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( *m_AudioTrackEntry );
-			if ( m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
-			{
-				m_AudioTrack.fillNextBuffer( &data[0] );
-			}
-			else
-			{
-				m_PlayingBack = false;
 
-				return;
-			}
-		}
-
-		m_AudioTrack.call( writeBuffer );
-	}
+	// TODO add limiter stage
 }
 
 void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent)
 {
 	PARAM_CHANNEL channel = static_cast<PARAM_CHANNEL>( paramEvent.getChannel() );
-	float val = paramEvent.getValue();
+	unsigned int val = paramEvent.getValue();
 
 	switch ( channel )
 	{
-		case PARAM_CHANNEL::TEST_1:
-			// record
-			this->deleteExistingFile();
-			this->createFile();
-			m_Recording = true;
-
-			break;
-		case PARAM_CHANNEL::TEST_2:
-			// stop
-			if ( m_Recording && m_AudioTrackEntry->getFileTransferInProgressFlagRef() )
-			{
-				m_FileManager.finalizeEntry( *m_AudioTrackEntry );
-			}
-			m_Recording = false;
-			m_PlayingBack = false;
-
-			break;
-		case PARAM_CHANNEL::TEST_3:
-			// play
-			if ( ! m_Recording && m_AudioTrackEntry )
-			{
-				m_AudioTrack.reset();
-				m_FileManager.readEntry( *m_AudioTrackEntry );
-				m_PlayingBack = true;
-			}
+		case PARAM_CHANNEL::LOAD_FILE:
+			this->loadFile( val );
 
 			break;
 		default:
@@ -122,31 +60,61 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 	}
 }
 
-void MnemonicAudioManager::deleteExistingFile()
+void MnemonicAudioManager::enterFileExplorer()
 {
-	if ( m_AudioTrackEntry ) m_AxiSramAllocator.free<Fat16Entry>( m_AudioTrackEntry );
-
-	const char* trackEntryName = "tmpAud.b12";
-
-	// look for the audio track in the file system
-	unsigned int oldFileIndex = 0;
-	std::vector<Fat16Entry*>& entriesInRoot = m_FileManager.getCurrentDirectoryEntries();
-	for ( const Fat16Entry* entry : entriesInRoot )
+	// get all b12 file entries and place them in vector
+	std::vector<UiFileExplorerEntry> uiEntryVec;
+	unsigned int index = 0;
+	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
 	{
-		if ( strcmp(entry->getFilenameDisplay(), trackEntryName) == 0 && ! entry->isDeletedEntry() )
+		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
+			|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
 		{
-			m_FileManager.deleteEntry( oldFileIndex );
+			UiFileExplorerEntry uiEntry;
+			strcpy( uiEntry.m_FilenameDisplay, entry->getFilenameDisplay() );
+			uiEntry.m_Index = index;
 
-			break;
+			uiEntryVec.push_back( uiEntry );
 		}
 
-		oldFileIndex++;
+		index++;
 	}
+
+	// allocate them in contiguous memory for ui use
+	// TODO might want to keep this pointer to free it later after viewing list?
+	uint8_t* primArrayPtr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( sizeof(UiFileExplorerEntry) * uiEntryVec.size() );
+	UiFileExplorerEntry* entryArrayPtr = reinterpret_cast<UiFileExplorerEntry*>( primArrayPtr );
+	index = 0;
+	for ( const UiFileExplorerEntry& entry : uiEntryVec )
+	{
+		entryArrayPtr[index] = entry;
+		index++;
+	}
+
+	// send the ui event with all this data
+	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, primArrayPtr, uiEntryVec.size(), 0) );
 }
 
-void MnemonicAudioManager::createFile()
+void MnemonicAudioManager::loadFile (unsigned int index)
 {
-	m_AudioTrackEntry = m_AxiSramAllocator.allocate<Fat16Entry>( "tmpAud", "b12" );
+	const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
 
-	m_FileManager.createEntry( *m_AudioTrackEntry );
+	if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
+		|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
+	{
+		AudioTrack track( m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
+					m_DecompressedBuffer );
+
+		for ( const AudioTrack& trackInVec : m_AudioTracks )
+		{
+			if ( track == trackInVec )
+			{
+				// the file is already loaded
+				return;
+			}
+		}
+
+		m_AudioTracks.push_back( track );
+		m_AudioTracks[m_AudioTracks.size() - 1].play();
+	}
 }

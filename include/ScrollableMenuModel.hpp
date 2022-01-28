@@ -13,7 +13,7 @@
 
 #include <set>
 
-#define MAX_ENTRIES 20
+#define MAX_ENTRIES 512
 
 class ScrollableMenuModel
 {

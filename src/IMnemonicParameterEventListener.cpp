@@ -4,7 +4,7 @@
 EventDispatcher<IMnemonicParameterEventListener, MnemonicParameterEvent,
 		&IMnemonicParameterEventListener::onMnemonicParameterEvent> IMnemonicParameterEventListener::m_EventDispatcher;
 
-MnemonicParameterEvent::MnemonicParameterEvent (float value, unsigned int channel) :
+MnemonicParameterEvent::MnemonicParameterEvent (unsigned int value, unsigned int channel) :
 	IEvent( channel ),
 	m_Value( value )
 {
@@ -14,7 +14,7 @@ MnemonicParameterEvent::~MnemonicParameterEvent()
 {
 }
 
-float MnemonicParameterEvent::getValue() const
+unsigned int MnemonicParameterEvent::getValue() const
 {
 	return m_Value;
 }

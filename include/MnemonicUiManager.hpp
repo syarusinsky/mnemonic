@@ -19,6 +19,14 @@
 #include "IMnemonicUiEventListener.hpp"
 #include "IPotEventListener.hpp"
 #include "IButtonEventListener.hpp"
+#include "ScrollableMenuModel.hpp"
+
+enum class MNEMONIC_MENUS
+{
+	ERROR_MESSAGE,
+	STATUS,
+	FILE_EXPLORER
+};
 
 class Font;
 
@@ -42,6 +50,15 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		void onMnemonicUiEvent (const MnemonicUiEvent& event) override;
 
 	private:
+		// to store the directory entries for printing
+		std::vector<UiFileExplorerEntry> 	m_AudioFileEntries;
+
+		// menu model for audio file explorer
+		ScrollableMenuModel 			m_AudioFileMenuModel;
+
+		// the current menu the ui is on
+		MNEMONIC_MENUS 	m_CurrentMenu;
+
 		// the parameters each effect pot is currently assigned to
 		PARAM_CHANNEL 	m_Effect1PotCurrentParam;
 		PARAM_CHANNEL 	m_Effect2PotCurrentParam;
@@ -87,6 +104,8 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		bool hasBrokenMenuChangeThreshold (float newVal, float cachedVal);
 
 		void displayErrorMessage (const std::string& errorMessage);
+
+		void drawScrollableMenu (ScrollableMenuModel& menu, bool (MnemonicUiManager::*shouldTickFunc)(unsigned int), MnemonicUiManager& ui);
 };
 
 #endif // MNEMONICUIMANAGER_HPP

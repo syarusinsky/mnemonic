@@ -4,9 +4,11 @@
 EventDispatcher<IMnemonicUiEventListener, MnemonicUiEvent,
 		&IMnemonicUiEventListener::onMnemonicUiEvent> IMnemonicUiEventListener::m_EventDispatcher;
 
-MnemonicUiEvent::MnemonicUiEvent (const UiEventType& eventType, unsigned int channel) :
+MnemonicUiEvent::MnemonicUiEvent (const UiEventType& eventType, void* dataPtr, unsigned int dataNumElements, unsigned int channel) :
 	IEvent( channel ),
-	m_EventType( eventType )
+	m_EventType( eventType ),
+	m_DataPtr( dataPtr ),
+	m_DataNumElements( dataNumElements )
 {
 }
 

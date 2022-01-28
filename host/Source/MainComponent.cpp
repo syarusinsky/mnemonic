@@ -212,9 +212,6 @@ MainComponent::MainComponent() :
 	// verify filesystem
 	audioManager.verifyFileSystem();
 
-	// TODO remove this after testing
-	audioManager.testFileShit();
-
 	// ARMor8PresetUpgrader presetUpgrader( initPreset, armor8VoiceManager.getPresetHeader() );
 	// presetManager.upgradePresets( &presetUpgrader );
 
@@ -326,9 +323,8 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
 
 		for ( int sample = 0; sample < bufferToFill.numSamples; sample++ )
 		{
-			uint16_t sampleToReadBuffer = ( (inBufferL[sample] + 1.0f) * 0.5f ) * 4096.0f;
-			uint16_t sampleOut = sAudioBuffer.getNextSample( sampleToReadBuffer );
-			float sampleOutFloat = static_cast<float>( ((sampleOut / 4096.0f) * 2.0f) - 1.0f );
+			int16_t sampleOut = sAudioBuffer.getNextSample( 0 );
+			float sampleOutFloat = static_cast<float>( (((sampleOut + (4096 / 2)) / 4096.0f) * 2.0f) - 1.0f );
 			writePtrR[sample] = sampleOutFloat;
 			writePtrL[sample] = sampleOutFloat;
 		}

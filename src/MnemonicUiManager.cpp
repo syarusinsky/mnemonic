@@ -6,9 +6,12 @@
 
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format) :
 	Surface( width, height, format ),
-	m_Effect1PotCurrentParam( PARAM_CHANNEL::TEST_1 ),
-	m_Effect2PotCurrentParam( PARAM_CHANNEL::TEST_2 ),
-	m_Effect3PotCurrentParam( PARAM_CHANNEL::TEST_3 ),
+	m_AudioFileEntries(),
+	m_AudioFileMenuModel( 1 ),
+	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
+	m_Effect1PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
+	m_Effect2PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
+	m_Effect3PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect1PotCached( 0.0f ),
 	m_Effect2PotCached( 0.0f ),
 	m_Effect3PotCached( 0.0f ),
@@ -43,11 +46,18 @@ void MnemonicUiManager::setFont (Font* font)
 
 void MnemonicUiManager::draw()
 {
-	m_Graphics->setColor( true );
-	m_Graphics->fill();
+	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	{
+		this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
+	}
+	else
+	{
+		m_Graphics->setColor( true );
+		m_Graphics->fill();
 
-	IMnemonicLCDRefreshEventListener::PublishEvent(
-			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+		IMnemonicLCDRefreshEventListener::PublishEvent(
+				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+	}
 }
 
 void MnemonicUiManager::onPotEvent (const PotEvent& potEvent)
@@ -136,15 +146,6 @@ void MnemonicUiManager::sendParamEventFromEffectPot (PARAM_CHANNEL param, float 
 {
 	switch ( param )
 	{
-		case PARAM_CHANNEL::TEST_1:
-
-			break;
-		case PARAM_CHANNEL::TEST_2:
-
-			break;
-		case PARAM_CHANNEL::TEST_3:
-
-			break;
 		default:
 			break;
 	}
@@ -278,20 +279,30 @@ void MnemonicUiManager::onButtonEvent (const ButtonEvent& buttonEvent)
 
 void MnemonicUiManager::handleEffect1SinglePress()
 {
-	IMnemonicParameterEventListener::PublishEvent(
-			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_1)) );
+	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	{
+		m_AudioFileMenuModel.reverseCursor();
+		this->draw();
+	}
 }
 
 void MnemonicUiManager::handleEffect2SinglePress()
 {
-	IMnemonicParameterEventListener::PublishEvent(
-			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_2)) );
+	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	{
+		m_AudioFileMenuModel.advanceCursor();
+		this->draw();
+	}
 }
 
 void MnemonicUiManager::handleDoubleButtonPress()
 {
-	IMnemonicParameterEventListener::PublishEvent(
-			MnemonicParameterEvent(0.0f, static_cast<unsigned int>(PARAM_CHANNEL::TEST_3)) );
+	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	{
+		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getCursorIndex()].m_Index;
+		IMnemonicParameterEventListener::PublishEvent(
+				MnemonicParameterEvent(index, static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
+	}
 }
 
 void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
@@ -302,6 +313,30 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 	{
 		case UiEventType::INVALID_FILESYSTEM:
 			this->displayErrorMessage( "INVALID FILESYS" );
+
+			m_CurrentMenu = MNEMONIC_MENUS::ERROR_MESSAGE;
+
+			break;
+		case UiEventType::ENTER_STATUS_PAGE:
+
+			break;
+		case UiEventType::ENTER_FILE_EXPLORER:
+		{
+			// enter file explorer page and display list of options
+			m_AudioFileMenuModel = ScrollableMenuModel( event.getDataNumElements() );
+			m_AudioFileEntries.clear();
+			UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
+			for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
+			{
+				m_AudioFileEntries.push_back( entries[entryNum] );
+				m_AudioFileMenuModel.addEntry( m_AudioFileEntries[entryNum].m_FilenameDisplay );
+			}
+
+			// draw the menu with the audio files
+			this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
+
+			m_CurrentMenu = MNEMONIC_MENUS::FILE_EXPLORER;
+		}
 
 			break;
 		default:
@@ -316,6 +351,59 @@ void MnemonicUiManager::displayErrorMessage (const std::string& errorMessage)
 
 	m_Graphics->setColor( true );
 	m_Graphics->drawText( 0.1f, 0.1f, errorMessage.c_str(), 1.0f );
+
+	IMnemonicLCDRefreshEventListener::PublishEvent(
+			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+}
+
+void MnemonicUiManager::drawScrollableMenu (ScrollableMenuModel& menu, bool (MnemonicUiManager::*shouldTickFunc)(unsigned int), MnemonicUiManager& ui)
+{
+	m_Graphics->setColor( false );
+	m_Graphics->fill();
+
+	m_Graphics->setColor( true );
+
+	// draw cursor
+	float yOffset = (0.15f * menu.getCursorIndex());
+	m_Graphics->drawTriangleFilled( 0.075f, 0.1f + yOffset, 0.075f, 0.2f + yOffset, 0.125f, 0.15f + yOffset );
+
+	// draw entries
+	char** entries = menu.getEntries();
+	unsigned int firstEntryIndex = menu.getFirstVisibleIndex();
+	unsigned int entryNum = 0;
+	char* entry = entries[entryNum];
+	yOffset = 0.1f;
+	const float tickOffset = 0.1f;
+	while ( entry != nullptr && entryNum < MAX_ENTRIES )
+	{
+		const unsigned int actualIndex = firstEntryIndex + entryNum;
+		if ( menu.indexIsTickable(actualIndex) )
+		{
+			bool fillCircle = false;
+			if ( shouldTickFunc != nullptr && (ui.*shouldTickFunc)(actualIndex) )
+			{
+				fillCircle = true;
+			}
+
+			if ( fillCircle )
+			{
+				m_Graphics->drawCircleFilled( 0.175f, 0.05f + yOffset, 0.025f );
+			}
+			else
+			{
+				m_Graphics->drawCircle( 0.175f, 0.05f + yOffset, 0.025f );
+			}
+
+			m_Graphics->drawText( 0.15f + tickOffset, yOffset, entry, 1.0f );
+		}
+		else
+		{
+			m_Graphics->drawText( 0.15f, yOffset, entry, 1.0f );
+		}
+		yOffset += 0.15f;
+		entryNum++;
+		entry = entries[entryNum];
+	}
 
 	IMnemonicLCDRefreshEventListener::PublishEvent(
 			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );

@@ -66,7 +66,7 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		// PresetManager presetManager;
 		MidiHandler midiHandler;
 		int lastInputIndex;
-		::AudioBuffer<uint16_t> sAudioBuffer;
+		::AudioBuffer<int16_t> sAudioBuffer;
 
 		uint8_t fakeAxiSram[524288]; // 512kB
 

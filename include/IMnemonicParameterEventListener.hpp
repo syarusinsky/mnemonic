@@ -12,13 +12,13 @@
 class MnemonicParameterEvent : public IEvent
 {
 	public:
-		MnemonicParameterEvent (float value, unsigned int channel);
+		MnemonicParameterEvent (unsigned int value, unsigned int channel);
 		~MnemonicParameterEvent() override;
 
-		float getValue() const;
+		unsigned int getValue() const;
 
 	private:
-		float 		m_Value;
+		unsigned int  	m_Value;
 };
 
 class IMnemonicParameterEventListener : public IEventListener
