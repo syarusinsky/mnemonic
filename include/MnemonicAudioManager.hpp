@@ -16,7 +16,7 @@
 
 class IStorageMedia;
 
-class MnemonicAudioManager : public IBufferCallback<int16_t>, public IMnemonicParameterEventListener
+class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnemonicParameterEventListener
 {
 	public:
 		MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSramPtr, unsigned int axiSramSizeInBytes);
@@ -24,7 +24,7 @@ class MnemonicAudioManager : public IBufferCallback<int16_t>, public IMnemonicPa
 
 		void verifyFileSystem(); // should be called on boot up at the very least
 
-		void call (int16_t* writeBuffer) override;
+		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
 
 		void onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent) override;
 

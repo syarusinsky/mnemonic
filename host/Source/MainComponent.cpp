@@ -323,10 +323,12 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
 
 		for ( int sample = 0; sample < bufferToFill.numSamples; sample++ )
 		{
-			int16_t sampleOut = sAudioBuffer.getNextSample( 0 );
-			float sampleOutFloat = static_cast<float>( (((sampleOut + (4096 / 2)) / 4096.0f) * 2.0f) - 1.0f );
-			writePtrR[sample] = sampleOutFloat;
-			writePtrL[sample] = sampleOutFloat;
+			int16_t sampleOutL = sAudioBuffer.getNextSampleL( 0 );
+			int16_t sampleOutR = sAudioBuffer.getNextSampleR( 0 );
+			float sampleOutFloatL = static_cast<float>( (((sampleOutL + (4096 / 2)) / 4096.0f) * 2.0f) - 1.0f );
+			float sampleOutFloatR = static_cast<float>( (((sampleOutR + (4096 / 2)) / 4096.0f) * 2.0f) - 1.0f );
+			writePtrR[sample] = sampleOutFloatR;
+			writePtrL[sample] = sampleOutFloatL;
 		}
 
 		sAudioBuffer.pollToFillBuffers();

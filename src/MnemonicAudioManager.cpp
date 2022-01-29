@@ -32,13 +32,16 @@ void MnemonicAudioManager::verifyFileSystem()
 	}
 }
 
-void MnemonicAudioManager::call (int16_t* writeBuffer)
+void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
-	memset( writeBuffer, 0, ABUFFER_SIZE * sizeof(int16_t) );
+	memset( writeBufferL, 0, ABUFFER_SIZE * sizeof(int16_t) );
+	memset( writeBufferR, 0, ABUFFER_SIZE * sizeof(int16_t) );
 
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
-		audioTrack.call( writeBuffer );
+		audioTrack.call( writeBufferL );
+		// TODO this is only done for mono tracks, need to actually call the other track for stereo
+		memcpy( writeBufferR, writeBufferL, ABUFFER_SIZE * sizeof(int16_t) );
 	}
 
 	// TODO add limiter stage
@@ -105,11 +108,14 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 		AudioTrack track( m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
 					m_DecompressedBuffer );
 
-		for ( const AudioTrack& trackInVec : m_AudioTracks )
+		for ( AudioTrack& trackInVec : m_AudioTracks )
 		{
 			if ( track == trackInVec )
 			{
 				// the file is already loaded
+				trackInVec.play();
+				track.freeData();
+
 				return;
 			}
 		}
