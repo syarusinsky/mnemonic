@@ -39,6 +39,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		void loadFile (unsigned int index);
 
 		void enterFileExplorer();
+
+		const Fat16Entry* lookForOtherChannel (const char* filenameDisplay); // for looking for other stereo channel
 };
 
 #endif // MNEMONICAUDIOMANAGER_HPP

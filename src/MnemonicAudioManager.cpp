@@ -39,9 +39,7 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
-		audioTrack.call( writeBufferL );
-		// TODO this is only done for mono tracks, need to actually call the other track for stereo
-		memcpy( writeBufferR, writeBufferL, ABUFFER_SIZE * sizeof(int16_t) );
+		audioTrack.call( writeBufferL, writeBufferR );
 	}
 
 	// TODO add limiter stage
@@ -102,25 +100,85 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 {
 	const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
 
+	// find the stereo channel if available
+	const Fat16Entry* entryOtherChannel = this->lookForOtherChannel( entry->getFilenameDisplay() );
+
 	if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
 		|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
 	{
-		AudioTrack track( m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
+		AudioTrack trackL( m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
 					m_DecompressedBuffer );
+		AudioTrack trackR( m_FileManager, (entryOtherChannel) ? *entryOtherChannel : *entry,
+					m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator, m_DecompressedBuffer );
 
 		for ( AudioTrack& trackInVec : m_AudioTracks )
 		{
-			if ( track == trackInVec )
+			if ( trackL == trackInVec )
 			{
 				// the file is already loaded
 				trackInVec.play();
-				track.freeData();
+				trackL.freeData();
+
+				if ( ! entryOtherChannel ) return;
+			}
+		}
+
+		for ( AudioTrack& trackInVec : m_AudioTracks )
+		{
+			if ( trackR == trackInVec )
+			{
+				// the file is already loaded
+				trackInVec.play();
+				trackR.freeData();
 
 				return;
 			}
 		}
 
-		m_AudioTracks.push_back( track );
+		m_AudioTracks.push_back( trackL );
 		m_AudioTracks[m_AudioTracks.size() - 1].play();
+		if ( entryOtherChannel )
+		{
+			m_AudioTracks[m_AudioTracks.size() - 1].setAmplitudes( 1.0f, 0.0f );
+			m_AudioTracks.push_back( trackR );
+			m_AudioTracks[m_AudioTracks.size() - 1].play();
+			m_AudioTracks[m_AudioTracks.size() - 1].setAmplitudes( 0.0f, 1.0f );
+		}
 	}
+}
+
+const Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenameDisplay)
+{
+	unsigned int dotIndex = 0;
+	for ( unsigned int characterNum = 0; characterNum < FAT16_FILENAME_SIZE + FAT16_EXTENSION_SIZE + 2; characterNum++ )
+	{
+		if ( filenameDisplay[characterNum] == '.' )
+		{
+			dotIndex = characterNum;
+
+			break;
+		}
+	}
+
+	char filenameToLookFor[FAT16_FILENAME_SIZE + FAT16_EXTENSION_SIZE + 2];
+	if ( filenameDisplay[dotIndex - 1] == 'L' ) // if we have the left channel, look for the right channel
+	{
+		strcpy( filenameToLookFor, filenameDisplay );
+		filenameToLookFor[dotIndex - 1] = 'R';
+	}
+	else if ( filenameDisplay[dotIndex - 1] == 'R' ) // if we have the right channel, look for the left channel
+	{
+		strcpy( filenameToLookFor, filenameDisplay );
+		filenameToLookFor[dotIndex - 1] = 'L';
+	}
+
+	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+	{
+		if ( strcmp(entry->getFilenameDisplay(), filenameToLookFor) == 0 )
+		{
+			return entry;
+		}
+	}
+
+	return nullptr;
 }

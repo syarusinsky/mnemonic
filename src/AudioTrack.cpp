@@ -17,7 +17,9 @@ AudioTrack::AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, 
 	m_B12CircularBuffer( m_Allocator.allocatePrimativeArray<uint8_t>(m_B12CircularBufferSize) ),
 	m_B12WritePos( 0 ),
 	m_B12ReadPos( 0 ),
-	m_DecompressedBuffer( decompressedBuffer )
+	m_DecompressedBuffer( decompressedBuffer ),
+	m_AmplitudeL( 1.0f ),
+	m_AmplitudeR( 1.0f )
 {
 	for ( int byte = 0; byte < m_B12CircularBufferSize; byte++ )
 	{
@@ -31,8 +33,7 @@ AudioTrack::~AudioTrack()
 
 bool AudioTrack::operator== (const AudioTrack& other) const
 {
-	if ( strcmp(m_FatEntry.getFilenameDisplay(), other.getFatEntry().getFilenameDisplay()) == 0 )
-	{
+	if ( strcmp(m_FatEntry.getFilenameDisplay(), other.getFatEntry().getFilenameDisplay()) == 0 ) {
 		return true;
 	}
 
@@ -59,6 +60,12 @@ void AudioTrack::reset()
 	}
 }
 
+void AudioTrack::setAmplitudes (const float amplitudeL, const float amplitudeR)
+{
+	m_AmplitudeL = amplitudeL;
+	m_AmplitudeR = amplitudeR;
+}
+
 bool AudioTrack::shouldFillNextBuffer()
 {
 	if ( m_B12ReadPos <= m_B12WritePos && m_B12ReadPos + COMPRESSED_BUFFER_SIZE >= m_B12WritePos )
@@ -82,7 +89,7 @@ void AudioTrack::fillNextBuffer (const uint8_t* const compressedBuf)
 	m_B12WritePos = ( m_B12WritePos + m_B12BufferSize ) % m_B12CircularBufferSize;
 }
 
-void AudioTrack::call (int16_t* writeBuffer)
+void AudioTrack::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
 	if ( m_FatEntry.getFileTransferInProgressFlagRef() )
 	{
@@ -103,7 +110,7 @@ void AudioTrack::call (int16_t* writeBuffer)
 
 	if ( this->shouldDecompress() )
 	{
-		this->decompressToBuffer( writeBuffer );
+		this->decompressToBuffer( writeBufferL, writeBufferR );
 	}
 }
 
@@ -121,7 +128,7 @@ bool AudioTrack::shouldDecompress()
 	return false;
 }
 
-void AudioTrack::decompressToBuffer (int16_t* writeBuffer)
+void AudioTrack::decompressToBuffer (int16_t* writeBufferL, int16_t* writeBufferR)
 {
 	uint8_t* compressedBuffer = &m_B12CircularBuffer[m_B12ReadPos];
 
@@ -129,7 +136,9 @@ void AudioTrack::decompressToBuffer (int16_t* writeBuffer)
 
 	for ( unsigned int sample = 0; sample < ABUFFER_SIZE; sample++ )
 	{
-		writeBuffer[sample] += ( static_cast<int16_t>(m_DecompressedBuffer[sample]) - (4096 / 2) ) / 2;
+		int16_t sampleVal = ( static_cast<int16_t>(m_DecompressedBuffer[sample]) - (4096 / 2) ) / 2;
+		writeBufferL[sample] += sampleVal * m_AmplitudeL;
+		writeBufferR[sample] += sampleVal * m_AmplitudeR;
 	}
 
 	m_B12ReadPos = ( m_B12ReadPos + COMPRESSED_BUFFER_SIZE ) % m_B12CircularBufferSize;

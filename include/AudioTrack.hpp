@@ -15,7 +15,7 @@
 class IAllocator;
 class Fat16FileManager;
 
-class AudioTrack : public IBufferCallback<int16_t>
+class AudioTrack : public IBufferCallback<int16_t, true>
 {
 	public:
 		AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, unsigned int b12BufferSizes, IAllocator& allocator,
@@ -32,7 +32,9 @@ class AudioTrack : public IBufferCallback<int16_t>
 		void play();
 		void reset();
 
-		void call (int16_t* writeBuffer) override;
+		void setAmplitudes (const float amplitudeL, const float amplitudeR);
+
+		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
 
 		void freeData(); // frees the data in AXISRAM, should be called when unloading the track
 
@@ -51,10 +53,13 @@ class AudioTrack : public IBufferCallback<int16_t>
 
 		uint16_t*     		m_DecompressedBuffer;
 
+		float 			m_AmplitudeL;
+		float 			m_AmplitudeR;
+
 		uint8_t* getBuffer (bool writeBuffer);
 
 		bool shouldDecompress();
-		void decompressToBuffer (int16_t* writeBuffer);
+		void decompressToBuffer (int16_t* writeBufferL, int16_t* writeBufferR);
 };
 
 #endif // AUDIOTRACK_HPP
