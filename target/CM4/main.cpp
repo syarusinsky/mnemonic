@@ -125,7 +125,7 @@ class MnemonicUiEventBridge
 
 		void processQueuedUiEvents()
 		{
-			MnemonicUiEvent uiEvent( UiEventType::INVALID_FILESYSTEM, 0 );
+			MnemonicUiEvent uiEvent( UiEventType::INVALID_FILESYSTEM, nullptr, 0, 0 );
 			bool readCorrectly = m_EventQueuePtr->readEvent( uiEvent );
 			while ( readCorrectly )
 			{

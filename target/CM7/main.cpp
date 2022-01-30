@@ -14,7 +14,7 @@ const int SYS_CLOCK_FREQUENCY = 480000000;
 
 // global variables
 MidiHandler* volatile midiHandlerPtr = nullptr;
-AudioBuffer<uint16_t>* volatile audioBufferPtr = nullptr;
+AudioBuffer<int16_t, true>* volatile audioBufferPtr = nullptr;
 
 // peripheral defines
 #define OP_AMP1_INV_OUT_PORT 		GPIO_PORT::C
@@ -383,12 +383,8 @@ int main(void)
 	LLPD::gpio_analog_setup( EFFECT_ADC_PORT, EFFECT1_ADC_PIN );
 	LLPD::gpio_analog_setup( EFFECT_ADC_PORT, EFFECT2_ADC_PIN );
 	LLPD::gpio_analog_setup( EFFECT_ADC_PORT, EFFECT3_ADC_PIN );
-	LLPD::gpio_analog_setup( AUDIO_IN_PORT, AUDIO1_IN_PIN );
-	LLPD::gpio_analog_setup( AUDIO_IN_PORT, AUDIO2_IN_PIN );
 	LLPD::adc_init( ADC_NUM::ADC_1_2, ADC_CYCLES_PER_SAMPLE::CPS_64p5 );
-	LLPD::adc_init( ADC_NUM::ADC_3, ADC_CYCLES_PER_SAMPLE::CPS_1p5 );
 	LLPD::adc_set_channel_order( ADC_NUM::ADC_1_2, 3, EFFECT1_ADC_CHANNEL, EFFECT2_ADC_CHANNEL, EFFECT3_ADC_CHANNEL );
-	LLPD::adc_set_channel_order( ADC_NUM::ADC_3, 2, AUDIO1_IN_ADC_CHANNEL, AUDIO2_IN_ADC_CHANNEL );
 
 	// pushbutton setup
 	LLPD::gpio_digital_input_setup( EFFECT_BUTTON_PORT, EFFECT1_BUTTON_PIN, GPIO_PUPD::PULL_UP );
@@ -462,7 +458,7 @@ int main(void)
 	audioManager.bindToMnemonicParameterEventSystem();
 
 	// connect to audio buffer
-	AudioBuffer<uint16_t> audioBuffer;
+	AudioBuffer<int16_t, true> audioBuffer;
 	audioBuffer.registerCallback( &audioManager );
 	audioBufferPtr = &audioBuffer;
 
@@ -490,13 +486,10 @@ extern "C" void TIM6_DAC_IRQHandler (void)
 	{
 		if ( audioBufferPtr )
 		{
-			LLPD::adc_perform_conversion_sequence( AUDIO_IN_ADC_NUM );
-			uint16_t audioIn1 = LLPD::adc_get_channel_value( AUDIO_IN_ADC_NUM, AUDIO1_IN_ADC_CHANNEL );
-			// uint16_t audioIn2 = LLPD::adc_get_channel_value( AUDIO_IN_ADC_NUM, AUDIO2_IN_ADC_CHANNEL );
+			uint16_t outValL = audioBufferPtr->getNextSampleL( 0 ) + ( 4096 / 2 );
+			uint16_t outValR = audioBufferPtr->getNextSampleR( 0 ) + ( 4096 / 2 );
 
-			uint16_t outVal = audioBufferPtr->getNextSample( audioIn1 );
-
-			LLPD::dac_send( outVal, outVal );
+			LLPD::dac_send( outValL, outValR );
 		}
 	}
 
