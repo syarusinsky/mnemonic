@@ -4,10 +4,12 @@
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 
+constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
+
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format) :
 	Surface( width, height, format ),
 	m_AudioFileEntries(),
-	m_AudioFileMenuModel( 1 ),
+	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
 	m_Effect1PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect2PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
@@ -323,7 +325,6 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 		case UiEventType::ENTER_FILE_EXPLORER:
 		{
 			// enter file explorer page and display list of options
-			m_AudioFileMenuModel = ScrollableMenuModel( event.getDataNumElements() );
 			m_AudioFileEntries.clear();
 			UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
 			for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
