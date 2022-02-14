@@ -301,7 +301,7 @@ void MnemonicUiManager::handleDoubleButtonPress()
 {
 	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
-		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getCursorIndex()].m_Index;
+		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getEntryIndex()].m_Index;
 		IMnemonicParameterEventListener::PublishEvent(
 				MnemonicParameterEvent(index, static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
 	}

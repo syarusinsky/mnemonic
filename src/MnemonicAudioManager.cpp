@@ -5,13 +5,13 @@
 #include <string.h>
 #include "B12Compression.hpp"
 
-#include <iostream>
-
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
 	m_FileManager( sdCard, &m_AxiSramAllocator ),
 	m_AudioTracks(),
-	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) )
+	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
+	m_MasterClockCount( 0 ),
+	m_CurrentMaxLoopCount( 1 )
 {
 }
 
@@ -34,12 +34,19 @@ void MnemonicAudioManager::verifyFileSystem()
 
 void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
+	m_MasterClockCount = ( m_MasterClockCount + 1 ) % m_CurrentMaxLoopCount;
+
 	memset( writeBufferL, 0, ABUFFER_SIZE * sizeof(int16_t) );
 	memset( writeBufferR, 0, ABUFFER_SIZE * sizeof(int16_t) );
 
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
 		audioTrack.call( writeBufferL, writeBufferR );
+
+		if ( audioTrack.shouldLoop(m_MasterClockCount) )
+		{
+			audioTrack.play();
+		}
 	}
 
 	// TODO add limiter stage
@@ -116,7 +123,14 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 			if ( trackL == trackInVec )
 			{
 				// the file is already loaded
-				trackInVec.play();
+				if ( trackInVec.isLoopable() )
+				{
+					trackInVec.setLoopable( false );
+				}
+				else
+				{
+					trackInVec.setLoopable( true );
+				}
 				trackL.freeData();
 
 				if ( ! entryOtherChannel ) return;
@@ -128,7 +142,14 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 			if ( trackR == trackInVec )
 			{
 				// the file is already loaded
-				trackInVec.play();
+				if ( trackInVec.isLoopable() )
+				{
+					trackInVec.setLoopable( false );
+				}
+				else
+				{
+					trackInVec.setLoopable( true );
+				}
 				trackR.freeData();
 
 				return;
@@ -136,13 +157,25 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 		}
 
 		m_AudioTracks.push_back( trackL );
-		m_AudioTracks[m_AudioTracks.size() - 1].play();
+		AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
+		// TODO right now we're assuming they're loopable, but in the future we need to make this a parameter
+		trackLRef.setLoopable( true );
+		trackLRef.setLoopLength( m_CurrentMaxLoopCount );
 		if ( entryOtherChannel )
 		{
-			m_AudioTracks[m_AudioTracks.size() - 1].setAmplitudes( 1.0f, 0.0f );
+			trackLRef.setAmplitudes( 1.0f, 0.0f );
 			m_AudioTracks.push_back( trackR );
-			m_AudioTracks[m_AudioTracks.size() - 1].play();
-			m_AudioTracks[m_AudioTracks.size() - 1].setAmplitudes( 0.0f, 1.0f );
+			AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
+			// TODO right now we're assuming they're loopable, but in the future we need to make this a parameter
+			trackRRef.setLoopable( true );
+			trackRRef.setLoopLength( m_CurrentMaxLoopCount );
+			trackRRef.setAmplitudes( 0.0f, 1.0f );
+		}
+
+		// reset the loop length for all audio tracks
+		for ( AudioTrack& trackInVec : m_AudioTracks )
+		{
+			trackInVec.setLoopLength( m_CurrentMaxLoopCount );
 		}
 	}
 }

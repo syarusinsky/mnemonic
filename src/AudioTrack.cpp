@@ -11,6 +11,8 @@ AudioTrack::AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, 
 			uint16_t* decompressedBuffer) :
 	m_FileManager( fileManager ),
 	m_FatEntry( entry ),
+	m_FileLengthInAudioBlocks( (entry.getFileSizeInBytes() * (1.0f / 0.75f) * 0.5f) / ABUFFER_SIZE ),
+	m_LoopLengthInAudioBlocks( m_FileLengthInAudioBlocks ),
 	m_Allocator( allocator ),
 	m_B12BufferSize( b12BufferSize ),
 	m_B12CircularBufferSize( m_B12BufferSize * 3 ),
@@ -19,7 +21,8 @@ AudioTrack::AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, 
 	m_B12ReadPos( 0 ),
 	m_DecompressedBuffer( decompressedBuffer ),
 	m_AmplitudeL( 1.0f ),
-	m_AmplitudeR( 1.0f )
+	m_AmplitudeR( 1.0f ),
+	m_IsLoopable( false )
 {
 	for ( int byte = 0; byte < m_B12CircularBufferSize; byte++ )
 	{
@@ -148,4 +151,33 @@ void AudioTrack::freeData()
 {
 	m_Allocator.free( m_B12CircularBuffer );
 	m_Allocator.free( m_DecompressedBuffer );
+}
+
+void AudioTrack::setLoopable (const bool isLoopable)
+{
+	m_IsLoopable = isLoopable;
+}
+
+void AudioTrack::setLoopLength (unsigned int& currentMaxLoopLength)
+{
+	if ( currentMaxLoopLength < m_FileLengthInAudioBlocks )
+	{
+		currentMaxLoopLength = m_FileLengthInAudioBlocks;
+		m_LoopLengthInAudioBlocks = m_FileLengthInAudioBlocks;
+	}
+	else
+	{
+		const unsigned int numLoopsFit = currentMaxLoopLength / m_FileLengthInAudioBlocks;
+		m_LoopLengthInAudioBlocks = currentMaxLoopLength / numLoopsFit;
+	}
+}
+
+bool AudioTrack::shouldLoop (const unsigned int masterClockCount)
+{
+	if ( masterClockCount % m_LoopLengthInAudioBlocks == 0 && this->isLoopable() )
+	{
+		return true;
+	}
+
+	return false;
 }

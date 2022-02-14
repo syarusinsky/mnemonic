@@ -36,6 +36,9 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		uint16_t* 			m_DecompressedBuffer; // for holding decompressed audio buffers for all audio tracks
 
+		unsigned int 			m_MasterClockCount;
+		unsigned int 			m_CurrentMaxLoopCount; // master clock resets after reaching this amount
+
 		void loadFile (unsigned int index);
 
 		void enterFileExplorer();
