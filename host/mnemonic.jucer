@@ -102,8 +102,12 @@
             resource="0" file="../include/IMnemonicLCDRefreshEventListener.hpp"/>
       <FILE id="bd95Yh" name="AudioTrack.cpp" compile="1" resource="0" file="../src/AudioTrack.cpp"/>
       <FILE id="bd95LA" name="AudioTrack.hpp" compile="0" resource="0" file="../include/AudioTrack.hpp"/>
+      <FILE id="cw35Yh" name="FakeSynth.cpp" compile="1" resource="0" file="../src/FakeSynth.cpp"/>
+      <FILE id="cw35LA" name="FakeSynth.hpp" compile="0" resource="0" file="../include/FakeSynth.hpp"/>
       <FILE id="Ge95Yh" name="IAllocator.cpp" compile="1" resource="0" file="../lib/DevLib/src/IAllocator.cpp"/>
       <FILE id="Ge95LA" name="IAllocator.hpp" compile="0" resource="0" file="../lib/DevLib/include/IAllocator.hpp"/>
+      <FILE id="we45Yh" name="PolyBLEPOsc.cpp" compile="1" resource="0" file="../lib/SAL/src/PolyBLEPOsc.cpp"/>
+      <FILE id="we45LA" name="PolyBLEPOsc.hpp" compile="0" resource="0" file="../lib/SAL/include/PolyBLEPOsc.hpp"/>
       <FILE id="D4ngYh" name="MnemonicUiManager.cpp" compile="1" resource="0"
             file="../src/MnemonicUiManager.cpp"/>
       <FILE id="D4nsLA" name="MnemonicUiManager.hpp" compile="0" resource="0"

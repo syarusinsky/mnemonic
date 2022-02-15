@@ -34,6 +34,7 @@ MainComponent::MainComponent() :
 	midiHandler(),
 	lastInputIndex( 0 ),
 	sAudioBuffer(),
+	fakeSynth(),
 	fakeAxiSram{ 0 },
 	sdCard( "SDCard.img" ),
 	audioManager( sdCard, fakeAxiSram, sizeof(fakeAxiSram) ),
@@ -63,6 +64,7 @@ MainComponent::MainComponent() :
 	uiManager.bindToPotEventSystem();
 	uiManager.bindToButtonEventSystem();
 	uiManager.bindToMnemonicUiEventSystem();
+	fakeSynth.bindToKeyEventSystem();
 
 	// load font and logo from file
 	char* fontBytes = new char[FONT_FILE_SIZE];
@@ -124,6 +126,7 @@ MainComponent::MainComponent() :
 	}
 
 	// connecting the audio buffer to the voice manager
+	sAudioBuffer.registerCallback( &fakeSynth );
 	sAudioBuffer.registerCallback( &audioManager );
 
 	// juce audio device setup

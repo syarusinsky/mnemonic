@@ -18,6 +18,7 @@
 #include "MnemonicUiManager.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 #include "CPPFile.hpp"
+#include "FakeSynth.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -67,6 +68,7 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		MidiHandler midiHandler;
 		int lastInputIndex;
 		::AudioBuffer<int16_t, true> sAudioBuffer;
+		FakeSynth fakeSynth;
 
 		uint8_t fakeAxiSram[524288]; // 512kB
 
