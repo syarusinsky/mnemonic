@@ -36,9 +36,6 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
 	m_MasterClockCount = ( m_MasterClockCount + 1 ) % m_CurrentMaxLoopCount;
 
-	memset( writeBufferL, 0, ABUFFER_SIZE * sizeof(int16_t) );
-	memset( writeBufferR, 0, ABUFFER_SIZE * sizeof(int16_t) );
-
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
 		audioTrack.call( writeBufferL, writeBufferR );

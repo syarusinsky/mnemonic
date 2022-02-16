@@ -7,7 +7,7 @@ FakeSynth::FakeSynth() :
 	m_Amplitude( 1.0f ),
 	m_Osc()
 {
-	m_Osc.setOscillatorMode( OscillatorMode::TRIANGLE );
+	m_Osc.setOscillatorMode( OscillatorMode::SINE );
 }
 
 FakeSynth::~FakeSynth()
@@ -18,9 +18,9 @@ void FakeSynth::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
 	for ( unsigned int sample = 0; sample < ABUFFER_SIZE; sample++ )
 	{
-		float sampleVal = m_Osc.nextSample();
-		writeBufferL[sample] = static_cast<int16_t>( (sampleVal * m_Amplitude) * 4095.0f * 0.5f ) / 4;
-		writeBufferR[sample] = static_cast<int16_t>( (sampleVal * m_Amplitude) * 4095.0f * 0.5f ) / 4;
+		int16_t sampleVal = static_cast<int16_t>( (m_Osc.nextSample() * m_Amplitude) * 4095.0f * 0.5f ) / 4;
+		writeBufferL[sample] += sampleVal;
+		writeBufferR[sample] += sampleVal;
 	}
 }
 
@@ -28,7 +28,7 @@ void FakeSynth::onKeyEvent (const KeyEvent& keyEvent)
 {
 	if ( keyEvent.pressed() == KeyPressedEnum::PRESSED )
 	{
-		m_Amplitude = 1.0f - ( (float)keyEvent.velocity() / 127.0f );
+		m_Amplitude = 1.0f;
 	}
 	else if ( keyEvent.pressed() == KeyPressedEnum::RELEASED )
 	{
