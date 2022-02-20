@@ -10,13 +10,14 @@
 #include "AudioTrack.hpp"
 #include "MnemonicConstants.hpp"
 #include "IBufferCallback.hpp"
+#include "IMidiEventListener.hpp"
 #include "Fat16FileManager.hpp"
 #include "IMnemonicParameterEventListener.hpp"
 #include "IAllocator.hpp"
 
 class IStorageMedia;
 
-class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnemonicParameterEventListener
+class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnemonicParameterEventListener, public IMidiEventListener
 {
 	public:
 		MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSramPtr, unsigned int axiSramSizeInBytes);
@@ -28,6 +29,10 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		void onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent) override;
 
+		void onMidiEvent (const MidiEvent& midiEvent) override; // TODO this function saves the midi events to a 'track' if recording
+
+		std::vector<MidiEvent>& getMidiEventsToSendVec() { return m_MidiEventsToSend; }
+
 	private:
 		IAllocator 			m_AxiSramAllocator;
 		Fat16FileManager 		m_FileManager;
@@ -38,6 +43,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		unsigned int 			m_MasterClockCount;
 		unsigned int 			m_CurrentMaxLoopCount; // master clock resets after reaching this amount
+
+		std::vector<MidiEvent> 		m_MidiEventsToSend; // TODO this is a vector of all midi events at a time code to be sent over usart
 
 		void loadFile (unsigned int index);
 

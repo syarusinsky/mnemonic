@@ -66,6 +66,7 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		// Your private member variables go here...
 		// PresetManager presetManager;
 		MidiHandler midiHandler;
+		MidiHandler midiHandlerFakeSynth;
 		int lastInputIndex;
 		::AudioBuffer<int16_t, true> sAudioBuffer;
 		FakeSynth fakeSynth;

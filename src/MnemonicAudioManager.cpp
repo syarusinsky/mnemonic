@@ -49,6 +49,12 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 	// TODO add limiter stage
 }
 
+void MnemonicAudioManager::onMidiEvent (const MidiEvent& midiEvent)
+{
+	// TODO this is where we'd record the midi event, but for now we're just looping it back by putting it in the midi events to send buffer
+	m_MidiEventsToSend.push_back( midiEvent );
+}
+
 void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent)
 {
 	PARAM_CHANNEL channel = static_cast<PARAM_CHANNEL>( paramEvent.getChannel() );

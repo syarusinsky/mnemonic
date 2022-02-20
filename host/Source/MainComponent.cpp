@@ -32,6 +32,7 @@ const unsigned int LOGO_FILE_SIZE = 119;
 //==============================================================================
 MainComponent::MainComponent() :
 	midiHandler(),
+	midiHandlerFakeSynth(),
 	lastInputIndex( 0 ),
 	sAudioBuffer(),
 	fakeSynth(),
@@ -58,9 +59,15 @@ MainComponent::MainComponent() :
 	_MM_SET_FLUSH_ZERO_MODE( _MM_FLUSH_ZERO_ON );
 	_MM_SET_DENORMALS_ZERO_MODE( _MM_DENORMALS_ZERO_ON );
 
+	midiHandler.setShouldPublishPitch( false );
+	midiHandler.setShouldPublishNoteOn( false );
+	midiHandler.setShouldPublishNoteOff( false );
+	midiHandlerFakeSynth.setShouldPublishMidi( false );
+
 	// connecting to event system
 	this->bindToMnemonicLCDRefreshEventSystem();
 	audioManager.bindToMnemonicParameterEventSystem();
+	audioManager.bindToMidiEventSystem();
 	uiManager.bindToPotEventSystem();
 	uiManager.bindToButtonEventSystem();
 	uiManager.bindToMnemonicUiEventSystem();
@@ -451,6 +458,20 @@ void MainComponent::handleIncomingMidiMessage (juce::MidiInput *source, const ju
 	}
 
 	midiHandler.dispatchEvents();
+
+	// these next lines are to simulate sending midi events over usart
+	std::vector<MidiEvent>& midiEventsToSendVec = audioManager.getMidiEventsToSendVec();
+	for ( const MidiEvent& midiEvent : midiEventsToSendVec )
+	{
+		const uint8_t* byteVal = midiEvent.getRawData();
+		for ( unsigned int byte = 0; byte < midiEvent.getNumBytes(); byte++ )
+		{
+			midiHandlerFakeSynth.processByte( byteVal[byte] );
+		}
+	}
+	midiEventsToSendVec.clear();
+
+	midiHandlerFakeSynth.dispatchEvents();
 }
 
 void MainComponent::onMnemonicLCDRefreshEvent (const MnemonicLCDRefreshEvent& lcdRefreshEvent)
