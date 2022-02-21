@@ -8,6 +8,7 @@
 *************************************************************************/
 
 #include "AudioTrack.hpp"
+#include "MidiTrack.hpp"
 #include "MnemonicConstants.hpp"
 #include "IBufferCallback.hpp"
 #include "IMidiEventListener.hpp"
@@ -16,6 +17,13 @@
 #include "IAllocator.hpp"
 
 class IStorageMedia;
+
+enum class MidiRecordingState : unsigned int
+{
+	NOT_RECORDING = 0,
+	WAITING_TO_RECORD = 1,
+	RECORDING = 2
+};
 
 class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnemonicParameterEventListener, public IMidiEventListener
 {
@@ -31,6 +39,7 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		void onMidiEvent (const MidiEvent& midiEvent) override; // TODO this function saves the midi events to a 'track' if recording
 
+		void startRecordingMidiTrack(); // TODO probably need to assign a 'cell'
 		std::vector<MidiEvent>& getMidiEventsToSendVec() { return m_MidiEventsToSend; }
 
 	private:
@@ -45,6 +54,11 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		unsigned int 			m_CurrentMaxLoopCount; // master clock resets after reaching this amount
 
 		std::vector<MidiEvent> 		m_MidiEventsToSend; // TODO this is a vector of all midi events at a time code to be sent over usart
+
+		MidiRecordingState 		m_RecordingMidiState; // TODO the state of the midi recording
+		MidiTrackEvent* const		m_TempMidiTrackEvents; // TODO a constant buffer for recording midi clips
+		unsigned int 			m_TempMidiTrackEventsIndex; // TODO an index into the current temp midi track recording
+		unsigned int 			m_TempMidiTrackEventsNumEvents; // TODO the number of events in the temp midi track recording
 
 		void loadFile (unsigned int index);
 

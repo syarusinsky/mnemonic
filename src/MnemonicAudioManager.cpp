@@ -11,7 +11,13 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 	m_AudioTracks(),
 	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
 	m_MasterClockCount( 0 ),
-	m_CurrentMaxLoopCount( 1 )
+	m_CurrentMaxLoopCount( 1 ),
+	m_MidiEventsToSend(),
+	m_RecordingMidiState( MidiRecordingState::NOT_RECORDING ),
+	m_TempMidiTrackEvents( reinterpret_cast<MidiTrackEvent*>(
+				m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(MNEMONIC_MAX_MIDI_TRACK_EVENTS * sizeof(MidiTrackEvent))) ),
+	m_TempMidiTrackEventsIndex( 0 ),
+	m_TempMidiTrackEventsNumEvents( 1 ) // 1 to avoid arithmetic exception when performing modulo
 {
 }
 
@@ -34,6 +40,19 @@ void MnemonicAudioManager::verifyFileSystem()
 
 void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
+	if ( m_RecordingMidiState == MidiRecordingState::WAITING_TO_RECORD && m_MasterClockCount == 0 )
+	{
+		m_RecordingMidiState = MidiRecordingState::RECORDING;
+		m_TempMidiTrackEventsNumEvents = 1; // 1 to avoid arithmetic exception when performing modulo
+		m_TempMidiTrackEventsIndex = 0;
+	}
+	else if ( m_RecordingMidiState == MidiRecordingState::RECORDING && m_MasterClockCount == 0 )
+	{
+		m_RecordingMidiState = MidiRecordingState::NOT_RECORDING;
+		m_TempMidiTrackEventsNumEvents = m_TempMidiTrackEventsIndex;
+		m_TempMidiTrackEventsIndex = 0;
+	}
+
 	m_MasterClockCount = ( m_MasterClockCount + 1 ) % m_CurrentMaxLoopCount;
 
 	for ( AudioTrack& audioTrack : m_AudioTracks )
@@ -46,13 +65,44 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		}
 	}
 
+	if ( m_RecordingMidiState == MidiRecordingState::NOT_RECORDING ) // TODO this is temp just to test it's working
+	{
+		// skip to upcoming midi track event
+		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode < m_MasterClockCount && m_TempMidiTrackEventsNumEvents > 1 )
+		{
+			m_TempMidiTrackEventsIndex = ( m_TempMidiTrackEventsIndex + 1 ) % m_TempMidiTrackEventsNumEvents;
+		}
+
+		// add all midi track events with the current time code to queue
+		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode == m_MasterClockCount && m_TempMidiTrackEventsNumEvents > 1 )
+		{
+			m_MidiEventsToSend.push_back( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent );
+
+			m_TempMidiTrackEventsIndex = ( m_TempMidiTrackEventsIndex + 1 ) % m_TempMidiTrackEventsNumEvents;
+		}
+	}
+
 	// TODO add limiter stage
 }
 
 void MnemonicAudioManager::onMidiEvent (const MidiEvent& midiEvent)
 {
-	// TODO this is where we'd record the midi event, but for now we're just looping it back by putting it in the midi events to send buffer
-	m_MidiEventsToSend.push_back( midiEvent );
+	if ( m_RecordingMidiState == MidiRecordingState::RECORDING && m_TempMidiTrackEventsIndex < MNEMONIC_MAX_MIDI_TRACK_EVENTS )
+	{
+		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent = midiEvent;
+		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode = m_MasterClockCount;
+
+		m_TempMidiTrackEventsIndex++;
+	}
+	else
+	{
+		m_MidiEventsToSend.push_back( midiEvent );
+	}
+}
+
+void MnemonicAudioManager::startRecordingMidiTrack()
+{
+	m_RecordingMidiState = MidiRecordingState::WAITING_TO_RECORD;
 }
 
 void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent)

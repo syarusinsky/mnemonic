@@ -3,6 +3,8 @@
 
 #include <limits>
 
+constexpr unsigned int MNEMONIC_MAX_MIDI_TRACK_EVENTS = 1000; // the max number of midi events able to record for a midi track
+
 constexpr unsigned int MNEMONIC_POT_STABIL_NUM = 50; // pot stabilization stuff
 constexpr float MNEMONIC_POT_MENU_CHANGE_THRESH = 0.5f; // threshold to break for a status submenu change
 
