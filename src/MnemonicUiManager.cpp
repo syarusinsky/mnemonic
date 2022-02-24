@@ -48,7 +48,19 @@ void MnemonicUiManager::setFont (Font* font)
 
 void MnemonicUiManager::draw()
 {
-	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
+	{
+		// TODO need a proper status function screen
+		m_Graphics->setColor( false );
+		m_Graphics->fill();
+
+		m_Graphics->setColor( true );
+		m_Graphics->drawText( 0.3f, 0.4f, "STATUS", 1.0f );
+
+		IMnemonicLCDRefreshEventListener::PublishEvent(
+				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
 		this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
 	}
@@ -281,7 +293,13 @@ void MnemonicUiManager::onButtonEvent (const ButtonEvent& buttonEvent)
 
 void MnemonicUiManager::handleEffect1SinglePress()
 {
-	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
+	{
+		// start midi recording
+		IMnemonicParameterEventListener::PublishEvent(
+				MnemonicParameterEvent(0, static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
 		m_AudioFileMenuModel.reverseCursor();
 		this->draw();
@@ -290,7 +308,13 @@ void MnemonicUiManager::handleEffect1SinglePress()
 
 void MnemonicUiManager::handleEffect2SinglePress()
 {
-	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
+	{
+		// end midi recording
+		IMnemonicParameterEventListener::PublishEvent(
+				MnemonicParameterEvent(0, static_cast<unsigned int>(PARAM_CHANNEL::END_MIDI_RECORDING)) );
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
 		m_AudioFileMenuModel.advanceCursor();
 		this->draw();
@@ -299,11 +323,22 @@ void MnemonicUiManager::handleEffect2SinglePress()
 
 void MnemonicUiManager::handleDoubleButtonPress()
 {
-	if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
+		// enter file explorer
+		IMnemonicParameterEventListener::PublishEvent(
+				MnemonicParameterEvent(0, static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
+	{
+		// select file in file explorer
 		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getEntryIndex()].m_Index;
 		IMnemonicParameterEventListener::PublishEvent(
 				MnemonicParameterEvent(index, static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
+
+		// return to status menu
+		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+		this->draw();
 	}
 }
 

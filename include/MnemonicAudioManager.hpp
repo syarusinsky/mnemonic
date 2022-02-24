@@ -38,8 +38,6 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		void onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent) override;
 
 		void onMidiEvent (const MidiEvent& midiEvent) override; // TODO this function saves the midi events to a 'track' if recording
-
-		void startRecordingMidiTrack(); // TODO probably need to assign a 'cell'
 		std::vector<MidiEvent>& getMidiEventsToSendVec() { return m_MidiEventsToSend; }
 
 	private:
@@ -56,11 +54,15 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		std::vector<MidiEvent> 		m_MidiEventsToSend; // TODO this is a vector of all midi events at a time code to be sent over usart
 
 		MidiRecordingState 		m_RecordingMidiState; // TODO the state of the midi recording
-		MidiTrackEvent* const		m_TempMidiTrackEvents; // TODO a constant buffer for recording midi clips
+		MidiTrackEvent* const		m_TempMidiTrackEvents; // TODO a buffer for recording midi clips
 		unsigned int 			m_TempMidiTrackEventsIndex; // TODO an index into the current temp midi track recording
 		unsigned int 			m_TempMidiTrackEventsNumEvents; // TODO the number of events in the temp midi track recording
+		unsigned int 			m_TempMidiTrackEventsLoopEnd; // TODO the ending loop count for the midi track
 
 		void loadFile (unsigned int index);
+
+		void startRecordingMidiTrack(); // TODO probably need to assign a 'cell'
+		void endRecordingMidiTrack();
 
 		void enterFileExplorer();
 

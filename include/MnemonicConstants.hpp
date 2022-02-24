@@ -13,8 +13,11 @@ constexpr unsigned int MNEMONIC_UI_EVENT_QUEUE_SIZE = 10;
 
 enum class PARAM_CHANNEL : unsigned int
 {
-	NULL_PARAM 	= 0,
-	LOAD_FILE 	= 1
+	NULL_PARAM 		= 0,
+	ENTER_FILE_EXPLORER 	= 1,
+	LOAD_FILE 		= 2,
+	START_MIDI_RECORDING 	= 3,
+	END_MIDI_RECORDING 	= 4
 };
 
 enum class POT_CHANNEL : unsigned int

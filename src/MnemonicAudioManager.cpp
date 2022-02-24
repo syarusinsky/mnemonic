@@ -17,7 +17,8 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 	m_TempMidiTrackEvents( reinterpret_cast<MidiTrackEvent*>(
 				m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(MNEMONIC_MAX_MIDI_TRACK_EVENTS * sizeof(MidiTrackEvent))) ),
 	m_TempMidiTrackEventsIndex( 0 ),
-	m_TempMidiTrackEventsNumEvents( 1 ) // 1 to avoid arithmetic exception when performing modulo
+	m_TempMidiTrackEventsNumEvents( 1 ), // 1 to avoid arithmetic exception when performing modulo
+	m_TempMidiTrackEventsLoopEnd( 1 )
 {
 }
 
@@ -32,10 +33,6 @@ void MnemonicAudioManager::verifyFileSystem()
 		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::INVALID_FILESYSTEM, nullptr, 0, 0) );
 		this->unbindFromMnemonicParameterEventSystem();
 	}
-	else
-	{
-		this->enterFileExplorer();
-	}
 }
 
 void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
@@ -45,12 +42,11 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		m_RecordingMidiState = MidiRecordingState::RECORDING;
 		m_TempMidiTrackEventsNumEvents = 1; // 1 to avoid arithmetic exception when performing modulo
 		m_TempMidiTrackEventsIndex = 0;
+		m_TempMidiTrackEventsLoopEnd = 1;
 	}
 	else if ( m_RecordingMidiState == MidiRecordingState::RECORDING && m_MasterClockCount == 0 )
 	{
-		m_RecordingMidiState = MidiRecordingState::NOT_RECORDING;
-		m_TempMidiTrackEventsNumEvents = m_TempMidiTrackEventsIndex;
-		m_TempMidiTrackEventsIndex = 0;
+		this->endRecordingMidiTrack();
 	}
 
 	m_MasterClockCount = ( m_MasterClockCount + 1 ) % m_CurrentMaxLoopCount;
@@ -68,17 +64,25 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 	if ( m_RecordingMidiState == MidiRecordingState::NOT_RECORDING ) // TODO this is temp just to test it's working
 	{
 		// skip to upcoming midi track event
-		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode < m_MasterClockCount && m_TempMidiTrackEventsNumEvents > 1 )
+		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode < m_MasterClockCount % m_TempMidiTrackEventsLoopEnd
+				&& m_TempMidiTrackEventsIndex != m_TempMidiTrackEventsNumEvents - 1 )
 		{
 			m_TempMidiTrackEventsIndex = ( m_TempMidiTrackEventsIndex + 1 ) % m_TempMidiTrackEventsNumEvents;
 		}
 
 		// add all midi track events with the current time code to queue
-		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode == m_MasterClockCount && m_TempMidiTrackEventsNumEvents > 1 )
+		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode == m_MasterClockCount % m_TempMidiTrackEventsLoopEnd
+				&& m_TempMidiTrackEventsNumEvents > 1 )
 		{
 			m_MidiEventsToSend.push_back( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent );
 
 			m_TempMidiTrackEventsIndex = ( m_TempMidiTrackEventsIndex + 1 ) % m_TempMidiTrackEventsNumEvents;
+		}
+
+		// if we've processed the last midi track event, return to the beginning
+		if ( m_TempMidiTrackEventsIndex == m_TempMidiTrackEventsNumEvents - 1 )
+		{
+			m_TempMidiTrackEventsIndex = 0;
 		}
 	}
 
@@ -87,12 +91,15 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 
 void MnemonicAudioManager::onMidiEvent (const MidiEvent& midiEvent)
 {
+	// TODO probably need to keep track of what midi messages have a note on without a note off, to apply those at the end of the loop
 	if ( m_RecordingMidiState == MidiRecordingState::RECORDING && m_TempMidiTrackEventsIndex < MNEMONIC_MAX_MIDI_TRACK_EVENTS )
 	{
 		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent = midiEvent;
 		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode = m_MasterClockCount;
 
 		m_TempMidiTrackEventsIndex++;
+
+		m_MidiEventsToSend.push_back( midiEvent );
 	}
 	else
 	{
@@ -105,6 +112,28 @@ void MnemonicAudioManager::startRecordingMidiTrack()
 	m_RecordingMidiState = MidiRecordingState::WAITING_TO_RECORD;
 }
 
+void MnemonicAudioManager::endRecordingMidiTrack()
+{
+	if ( m_RecordingMidiState == MidiRecordingState::RECORDING )
+	{
+		m_RecordingMidiState = MidiRecordingState::NOT_RECORDING;
+		m_TempMidiTrackEventsNumEvents = ( m_TempMidiTrackEventsIndex != 0 ) ? m_TempMidiTrackEventsIndex : 1;
+		m_TempMidiTrackEventsIndex = 0;
+		if ( m_MasterClockCount == 0 )
+		{
+			m_TempMidiTrackEventsLoopEnd = m_CurrentMaxLoopCount;
+		}
+		else
+		{
+			const unsigned int numLoopsFit = m_CurrentMaxLoopCount / m_MasterClockCount;
+			const unsigned int numLoopsFitRoundToEvenNum = ( numLoopsFit / 2 ) * 2;
+			m_TempMidiTrackEventsLoopEnd = m_CurrentMaxLoopCount / numLoopsFitRoundToEvenNum;
+		}
+
+		// TODO may also want to add note off messages to any messages that are still being 'pressed'? Probably do
+	}
+}
+
 void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent)
 {
 	PARAM_CHANNEL channel = static_cast<PARAM_CHANNEL>( paramEvent.getChannel() );
@@ -112,8 +141,20 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 
 	switch ( channel )
 	{
+		case PARAM_CHANNEL::ENTER_FILE_EXPLORER:
+			this->enterFileExplorer();
+
+			break;
 		case PARAM_CHANNEL::LOAD_FILE:
 			this->loadFile( val );
+
+			break;
+		case PARAM_CHANNEL::START_MIDI_RECORDING:
+			this->startRecordingMidiTrack();
+
+			break;
+		case PARAM_CHANNEL::END_MIDI_RECORDING:
+			this->endRecordingMidiTrack();
 
 			break;
 		default:
@@ -123,37 +164,46 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 
 void MnemonicAudioManager::enterFileExplorer()
 {
-	// get all b12 file entries and place them in vector
-	std::vector<UiFileExplorerEntry> uiEntryVec;
-	unsigned int index = 0;
-	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
-	{
-		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
-			|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
-		{
-			UiFileExplorerEntry uiEntry;
-			strcpy( uiEntry.m_FilenameDisplay, entry->getFilenameDisplay() );
-			uiEntry.m_Index = index;
+	static uint8_t* primArrayPtr = nullptr;
+	static unsigned int numEntries = 0;
 
-			uiEntryVec.push_back( uiEntry );
+	// since the sd card is not hot-pluggable, we only need to get the list of entries once
+	if ( primArrayPtr == nullptr )
+	{
+		// get all b12 file entries and place them in vector
+		std::vector<UiFileExplorerEntry> uiEntryVec;
+		unsigned int index = 0;
+		for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+		{
+			if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
+				|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
+			{
+				UiFileExplorerEntry uiEntry;
+				strcpy( uiEntry.m_FilenameDisplay, entry->getFilenameDisplay() );
+				uiEntry.m_Index = index;
+
+				uiEntryVec.push_back( uiEntry );
+			}
+
+			index++;
 		}
 
-		index++;
-	}
+		// allocate them in contiguous memory for ui use
+		primArrayPtr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( sizeof(UiFileExplorerEntry) * uiEntryVec.size() );
 
-	// allocate them in contiguous memory for ui use
-	// TODO might want to keep this pointer to free it later after viewing list?
-	uint8_t* primArrayPtr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( sizeof(UiFileExplorerEntry) * uiEntryVec.size() );
-	UiFileExplorerEntry* entryArrayPtr = reinterpret_cast<UiFileExplorerEntry*>( primArrayPtr );
-	index = 0;
-	for ( const UiFileExplorerEntry& entry : uiEntryVec )
-	{
-		entryArrayPtr[index] = entry;
-		index++;
+		UiFileExplorerEntry* entryArrayPtr = reinterpret_cast<UiFileExplorerEntry*>( primArrayPtr );
+		index = 0;
+		for ( const UiFileExplorerEntry& entry : uiEntryVec )
+		{
+			entryArrayPtr[index] = entry;
+			index++;
+		}
+
+		numEntries = uiEntryVec.size();
 	}
 
 	// send the ui event with all this data
-	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, primArrayPtr, uiEntryVec.size(), 0) );
+	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, primArrayPtr, numEntries, 0) );
 }
 
 void MnemonicAudioManager::loadFile (unsigned int index)

@@ -216,11 +216,11 @@ MainComponent::MainComponent() :
 	// you add any child components.
 	setSize( 800, 600 );
 
-	// UI initialization
-	uiManager.draw();
-
 	// verify filesystem
 	audioManager.verifyFileSystem();
+
+	// UI initialization
+	uiManager.draw();
 
 	// ARMor8PresetUpgrader presetUpgrader( initPreset, armor8VoiceManager.getPresetHeader() );
 	// presetManager.upgradePresets( &presetUpgrader );
@@ -265,6 +265,20 @@ bool MainComponent::keyStateChanged (bool isKeyDown)
 
 void MainComponent::timerCallback()
 {
+	// these next lines are to simulate sending midi events over usart
+	std::vector<MidiEvent>& midiEventsToSendVec = audioManager.getMidiEventsToSendVec();
+	for ( const MidiEvent& midiEvent : midiEventsToSendVec )
+	{
+		const uint8_t* byteVal = midiEvent.getRawData();
+		for ( unsigned int byte = 0; byte < midiEvent.getNumBytes(); byte++ )
+		{
+			midiHandlerFakeSynth.processByte( byteVal[byte] );
+		}
+	}
+	midiEventsToSendVec.clear();
+
+	midiHandlerFakeSynth.dispatchEvents();
+
 	static unsigned int fakeLoadingCounter = 0;
 
 	if ( fakeLoadingCounter == 100 )
@@ -458,20 +472,6 @@ void MainComponent::handleIncomingMidiMessage (juce::MidiInput *source, const ju
 	}
 
 	midiHandler.dispatchEvents();
-
-	// these next lines are to simulate sending midi events over usart
-	std::vector<MidiEvent>& midiEventsToSendVec = audioManager.getMidiEventsToSendVec();
-	for ( const MidiEvent& midiEvent : midiEventsToSendVec )
-	{
-		const uint8_t* byteVal = midiEvent.getRawData();
-		for ( unsigned int byte = 0; byte < midiEvent.getNumBytes(); byte++ )
-		{
-			midiHandlerFakeSynth.processByte( byteVal[byte] );
-		}
-	}
-	midiEventsToSendVec.clear();
-
-	midiHandlerFakeSynth.dispatchEvents();
 }
 
 void MainComponent::onMnemonicLCDRefreshEvent (const MnemonicLCDRefreshEvent& lcdRefreshEvent)
