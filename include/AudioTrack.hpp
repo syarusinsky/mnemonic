@@ -10,6 +10,7 @@
 #include "AudioConstants.hpp"
 #include "IBufferCallback.hpp"
 #include "Fat16Entry.hpp"
+#include "SharedData.hpp"
 #include <stdint.h>
 
 class IAllocator;
@@ -43,8 +44,6 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 
 		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
 
-		void freeData(); // frees the data in AXISRAM, should be called when unloading the track
-
 	private:
 		Fat16FileManager& 	m_FileManager;
 		Fat16Entry 		m_FatEntry;
@@ -52,12 +51,10 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		const unsigned int 	m_FileLengthInAudioBlocks;
 		unsigned int 		m_LoopLengthInAudioBlocks;
 
-		IAllocator& 		m_Allocator;
-
 		unsigned int 		m_B12BufferSize;
 
 		unsigned int 		m_B12CircularBufferSize;
-		uint8_t*     		m_B12CircularBuffer;
+		SharedData<uint8_t>     m_B12CircularBuffer;
 		unsigned int 		m_B12WritePos;
 		unsigned int 		m_B12ReadPos;
 

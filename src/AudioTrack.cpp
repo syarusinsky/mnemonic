@@ -1,7 +1,6 @@
 #include "AudioTrack.hpp"
 
 #include "B12Compression.hpp"
-#include "IAllocator.hpp"
 #include "Fat16FileManager.hpp"
 #include <cstring>
 
@@ -13,10 +12,9 @@ AudioTrack::AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, 
 	m_FatEntry( entry ),
 	m_FileLengthInAudioBlocks( (entry.getFileSizeInBytes() * (1.0f / 0.75f) * 0.5f) / ABUFFER_SIZE ),
 	m_LoopLengthInAudioBlocks( m_FileLengthInAudioBlocks ),
-	m_Allocator( allocator ),
 	m_B12BufferSize( b12BufferSize ),
 	m_B12CircularBufferSize( m_B12BufferSize * 3 ),
-	m_B12CircularBuffer( m_Allocator.allocatePrimativeArray<uint8_t>(m_B12CircularBufferSize) ),
+	m_B12CircularBuffer( SharedData<uint8_t>::MakeSharedData(m_B12CircularBufferSize, &allocator) ),
 	m_B12WritePos( 0 ),
 	m_B12ReadPos( 0 ),
 	m_DecompressedBuffer( decompressedBuffer ),
@@ -145,11 +143,6 @@ void AudioTrack::decompressToBuffer (int16_t* writeBufferL, int16_t* writeBuffer
 	}
 
 	m_B12ReadPos = ( m_B12ReadPos + COMPRESSED_BUFFER_SIZE ) % m_B12CircularBufferSize;
-}
-
-void AudioTrack::freeData()
-{
-	m_Allocator.free( m_B12CircularBuffer );
 }
 
 void AudioTrack::setLoopable (const bool isLoopable)

@@ -94,8 +94,6 @@ void MnemonicAudioManager::startRecordingMidiTrack()
 	// TODO we will need a separate function to delete midi tracks when we have cells to start and stop midi recordings
 	if ( ! m_MidiTracks.empty() )
 	{
-		const MidiTrackEvent* const midiTrackEvents = m_MidiTracks[0].getMidiTrackEvents();
-		m_AxiSramAllocator.free( midiTrackEvents );
 		m_MidiTracks.pop_back();
 	}
 }
@@ -124,16 +122,9 @@ void MnemonicAudioManager::endRecordingMidiTrack()
 		// create the actual midi track and add it to the midi tracks vector
 		if ( m_TempMidiTrackEventsNumEvents > 1 )
 		{
-			// TODO probably better to introduce reference counting for memory management for midi and audio tracks...
-			// use SharedData new function? MakeSharedData( size, data )?
-			MidiTrackEvent* const midiTrackEvents = reinterpret_cast<MidiTrackEvent* const>(
-				m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(m_TempMidiTrackEventsNumEvents * sizeof(MidiTrackEvent)) );
-			for ( unsigned int midiEventNum = 0; midiEventNum < m_TempMidiTrackEventsNumEvents; midiEventNum++ )
-			{
-				midiTrackEvents[midiEventNum] = m_TempMidiTrackEvents[midiEventNum];
-			}
 
-			MidiTrack midiTrack( midiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd );
+			MidiTrack midiTrack( m_TempMidiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd,
+						m_AxiSramAllocator );
 			m_MidiTracks.push_back( midiTrack );
 		}
 	}
@@ -239,8 +230,6 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 				{
 					trackInVec.setLoopable( true );
 				}
-				// free data otherwise we'll have a memory leak
-				trackL.freeData();
 
 				if ( ! entryOtherChannel ) return;
 			}
@@ -259,8 +248,6 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 				{
 					trackInVec.setLoopable( true );
 				}
-				// free data otherwise we'll have a memory leak
-				trackR.freeData();
 
 				return;
 			}
@@ -313,6 +300,10 @@ const Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenam
 	{
 		strcpy( filenameToLookFor, filenameDisplay );
 		filenameToLookFor[dotIndex - 1] = 'L';
+	}
+	else
+	{
+		return nullptr;
 	}
 
 	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )

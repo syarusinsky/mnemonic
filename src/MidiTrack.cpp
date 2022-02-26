@@ -1,20 +1,21 @@
 #include "MidiTrack.hpp"
 
-MidiTrack::MidiTrack (const MidiTrackEvent* const midiTrackEvents, const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd) :
-	m_MidiTrackEvents( midiTrackEvents ),
+MidiTrack::MidiTrack (const MidiTrackEvent* const midiTrackEvents, const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd,
+			IAllocator& allocator) :
+	m_MidiTrackEvents( SharedData<MidiTrackEvent>::MakeSharedData(lengthInMidiTrackEvents, &allocator) ),
 	m_LengthInMidiTrackEvents( lengthInMidiTrackEvents ),
 	m_LoopEndInBlocks( loopEnd ),
 	m_MidiTrackEventsIndex( 0 )
 {
+	// copy midi events from temp buffer
+	for ( unsigned int midiEventNum = 0; midiEventNum < lengthInMidiTrackEvents; midiEventNum++ )
+	{
+		m_MidiTrackEvents[midiEventNum] = midiTrackEvents[midiEventNum];
+	}
 }
 
 MidiTrack::~MidiTrack()
 {
-}
-
-const MidiTrackEvent* const MidiTrack::getMidiTrackEvents()
-{
-	return m_MidiTrackEvents;
 }
 
 void MidiTrack::addMidiEventsAtTimeCode( const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector )
