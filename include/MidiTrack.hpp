@@ -7,6 +7,7 @@
 *************************************************************************/
 
 #include "IMidiEventListener.hpp"
+#include <vector>
 
 struct MidiTrackEvent
 {
@@ -17,12 +18,19 @@ struct MidiTrackEvent
 class MidiTrack
 {
 	public:
-		MidiTrack (const MidiTrackEvent* midiTrackEvents, const unsigned int lengthInMidiTrackEvents);
+		MidiTrack (const MidiTrackEvent* const midiTrackEvents, const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd);
 		~MidiTrack();
 
+		void addMidiEventsAtTimeCode( const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector );
+
+		const MidiTrackEvent* const getMidiTrackEvents();
+
 	private:
-		const MidiTrackEvent* 	m_MidiTrackEvents;
-		const unsigned int 	m_LengthInMidiTrackEvents;
+		const MidiTrackEvent* const	m_MidiTrackEvents;
+		const unsigned int 		m_LengthInMidiTrackEvents;
+		const unsigned int 		m_LoopEndInBlocks;
+
+		unsigned int 			m_MidiTrackEventsIndex;
 };
 
 #endif // MIDITRACK_HPP

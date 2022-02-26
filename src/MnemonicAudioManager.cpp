@@ -12,6 +12,7 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
 	m_MasterClockCount( 0 ),
 	m_CurrentMaxLoopCount( 1 ),
+	m_MidiTracks(),
 	m_MidiEventsToSend(),
 	m_RecordingMidiState( MidiRecordingState::NOT_RECORDING ),
 	m_TempMidiTrackEvents( reinterpret_cast<MidiTrackEvent*>(
@@ -61,29 +62,9 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		}
 	}
 
-	if ( m_RecordingMidiState == MidiRecordingState::NOT_RECORDING ) // TODO this is temp just to test it's working
+	for ( MidiTrack& midiTrack : m_MidiTracks )
 	{
-		// skip to upcoming midi track event
-		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode < m_MasterClockCount % m_TempMidiTrackEventsLoopEnd
-				&& m_TempMidiTrackEventsIndex != m_TempMidiTrackEventsNumEvents - 1 )
-		{
-			m_TempMidiTrackEventsIndex = ( m_TempMidiTrackEventsIndex + 1 ) % m_TempMidiTrackEventsNumEvents;
-		}
-
-		// add all midi track events with the current time code to queue
-		while ( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode == m_MasterClockCount % m_TempMidiTrackEventsLoopEnd
-				&& m_TempMidiTrackEventsNumEvents > 1 )
-		{
-			m_MidiEventsToSend.push_back( m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent );
-
-			m_TempMidiTrackEventsIndex = ( m_TempMidiTrackEventsIndex + 1 ) % m_TempMidiTrackEventsNumEvents;
-		}
-
-		// if we've processed the last midi track event, return to the beginning
-		if ( m_TempMidiTrackEventsIndex == m_TempMidiTrackEventsNumEvents - 1 )
-		{
-			m_TempMidiTrackEventsIndex = 0;
-		}
+		midiTrack.addMidiEventsAtTimeCode( m_MasterClockCount, m_MidiEventsToSend );
 	}
 
 	// TODO add limiter stage
@@ -110,12 +91,22 @@ void MnemonicAudioManager::onMidiEvent (const MidiEvent& midiEvent)
 void MnemonicAudioManager::startRecordingMidiTrack()
 {
 	m_RecordingMidiState = MidiRecordingState::WAITING_TO_RECORD;
+	// TODO we will need a separate function to delete midi tracks when we have cells to start and stop midi recordings
+	if ( ! m_MidiTracks.empty() )
+	{
+		const MidiTrackEvent* const midiTrackEvents = m_MidiTracks[0].getMidiTrackEvents();
+		m_AxiSramAllocator.free( midiTrackEvents );
+		m_MidiTracks.pop_back();
+	}
 }
 
 void MnemonicAudioManager::endRecordingMidiTrack()
 {
 	if ( m_RecordingMidiState == MidiRecordingState::RECORDING )
 	{
+		// TODO may also want to add note off messages to any messages that are still being 'pressed'? Probably do
+
+		// end and finalize the temp midi track
 		m_RecordingMidiState = MidiRecordingState::NOT_RECORDING;
 		m_TempMidiTrackEventsNumEvents = ( m_TempMidiTrackEventsIndex != 0 ) ? m_TempMidiTrackEventsIndex : 1;
 		m_TempMidiTrackEventsIndex = 0;
@@ -130,7 +121,21 @@ void MnemonicAudioManager::endRecordingMidiTrack()
 			m_TempMidiTrackEventsLoopEnd = m_CurrentMaxLoopCount / numLoopsFitRoundToEvenNum;
 		}
 
-		// TODO may also want to add note off messages to any messages that are still being 'pressed'? Probably do
+		// create the actual midi track and add it to the midi tracks vector
+		if ( m_TempMidiTrackEventsNumEvents > 1 )
+		{
+			// TODO probably better to introduce reference counting for memory management for midi and audio tracks...
+			// use SharedData new function? MakeSharedData( size, data )?
+			MidiTrackEvent* const midiTrackEvents = reinterpret_cast<MidiTrackEvent* const>(
+				m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(m_TempMidiTrackEventsNumEvents * sizeof(MidiTrackEvent)) );
+			for ( unsigned int midiEventNum = 0; midiEventNum < m_TempMidiTrackEventsNumEvents; midiEventNum++ )
+			{
+				midiTrackEvents[midiEventNum] = m_TempMidiTrackEvents[midiEventNum];
+			}
+
+			MidiTrack midiTrack( midiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd );
+			m_MidiTracks.push_back( midiTrack );
+		}
 	}
 }
 
@@ -234,6 +239,7 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 				{
 					trackInVec.setLoopable( true );
 				}
+				// free data otherwise we'll have a memory leak
 				trackL.freeData();
 
 				if ( ! entryOtherChannel ) return;
@@ -253,6 +259,7 @@ void MnemonicAudioManager::loadFile (unsigned int index)
 				{
 					trackInVec.setLoopable( true );
 				}
+				// free data otherwise we'll have a memory leak
 				trackR.freeData();
 
 				return;

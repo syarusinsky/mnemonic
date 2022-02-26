@@ -102,6 +102,8 @@
             resource="0" file="../include/IMnemonicLCDRefreshEventListener.hpp"/>
       <FILE id="bd95Yh" name="AudioTrack.cpp" compile="1" resource="0" file="../src/AudioTrack.cpp"/>
       <FILE id="bd95LA" name="AudioTrack.hpp" compile="0" resource="0" file="../include/AudioTrack.hpp"/>
+      <FILE id="Id95Yh" name="MidiTrack.cpp" compile="1" resource="0" file="../src/MidiTrack.cpp"/>
+      <FILE id="Id95LA" name="MidiTrack.hpp" compile="0" resource="0" file="../include/MidiTrack.hpp"/>
       <FILE id="cw35Yh" name="FakeSynth.cpp" compile="1" resource="0" file="../src/FakeSynth.cpp"/>
       <FILE id="cw35LA" name="FakeSynth.hpp" compile="0" resource="0" file="../include/FakeSynth.hpp"/>
       <FILE id="Ge95Yh" name="IAllocator.cpp" compile="1" resource="0" file="../lib/DevLib/src/IAllocator.cpp"/>

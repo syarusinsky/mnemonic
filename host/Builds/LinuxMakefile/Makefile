@@ -94,6 +94,7 @@ OBJECTS_APP := \
   $(JUCE_OBJDIR)/IMnemonicUiEventListener_db0c73de.o \
   $(JUCE_OBJDIR)/IMnemonicLCDRefreshEventListener_d5c03264.o \
   $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o \
+  $(JUCE_OBJDIR)/MidiTrack_9ff64265.o \
   $(JUCE_OBJDIR)/FakeSynth_2d5bf222.o \
   $(JUCE_OBJDIR)/IAllocator_5df50da8.o \
   $(JUCE_OBJDIR)/PolyBLEPOsc_ceb07cde.o \
@@ -258,6 +259,11 @@ $(JUCE_OBJDIR)/IMnemonicLCDRefreshEventListener_d5c03264.o: ../../../src/IMnemon
 $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o: ../../../src/AudioTrack.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling AudioTrack.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/MidiTrack_9ff64265.o: ../../../src/MidiTrack.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling MidiTrack.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/FakeSynth_2d5bf222.o: ../../../src/FakeSynth.cpp

@@ -150,7 +150,6 @@ void AudioTrack::decompressToBuffer (int16_t* writeBufferL, int16_t* writeBuffer
 void AudioTrack::freeData()
 {
 	m_Allocator.free( m_B12CircularBuffer );
-	m_Allocator.free( m_DecompressedBuffer );
 }
 
 void AudioTrack::setLoopable (const bool isLoopable)
