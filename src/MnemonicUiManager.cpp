@@ -4,10 +4,19 @@
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 
+// TODO remove after testing
+#include <iostream>
+
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
-MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format) :
+void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
+{
+	listener->onNeotrellisButton( neotrellis, keyReleased, keyX, keyY );
+}
+
+MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format, NeotrellisInterface* const neotrellis) :
 	Surface( width, height, format ),
+	m_Neotrellis( neotrellis ),
 	m_AudioFileEntries(),
 	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
@@ -35,6 +44,15 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_Effect1BtnState( BUTTON_STATE::FLOATING ),
 	m_Effect2BtnState( BUTTON_STATE::FLOATING )
 {
+	m_Neotrellis->begin( this );
+
+	for ( unsigned int row = 0; row < m_Neotrellis->getNumRows(); row++ )
+	{
+		for ( unsigned int col = 0; col < m_Neotrellis->getNumCols(); col++ )
+		{
+			m_Neotrellis->registerCallback( row, col, onNeotrellisButtonHelperFunc );
+		}
+	}
 }
 
 MnemonicUiManager::~MnemonicUiManager()
@@ -340,6 +358,11 @@ void MnemonicUiManager::handleDoubleButtonPress()
 		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
 		this->draw();
 	}
+}
+
+void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
+{
+	std::cout << "NEOTRELLIS EVENT: x = " << std::to_string(keyX) << "   y = " << std::to_string(keyY) << "   released = " << keyReleased << std::endl;
 }
 
 void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)

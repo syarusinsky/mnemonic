@@ -20,6 +20,7 @@
 #include "IPotEventListener.hpp"
 #include "IButtonEventListener.hpp"
 #include "ScrollableMenuModel.hpp"
+#include "Neotrellis.hpp"
 
 enum class MNEMONIC_MENUS
 {
@@ -30,10 +31,11 @@ enum class MNEMONIC_MENUS
 
 class Font;
 
-class MnemonicUiManager : public Surface, public IPotEventListener, public IButtonEventListener, public IMnemonicUiEventListener
+class MnemonicUiManager : public Surface, public IPotEventListener, public IButtonEventListener, public IMnemonicUiEventListener,
+				public NeotrellisListener
 {
 	public:
-		MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format);
+		MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format, NeotrellisInterface* const neotrellis);
 		~MnemonicUiManager() override;
 
 		void setFont (Font* font);
@@ -50,6 +52,8 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		void onMnemonicUiEvent (const MnemonicUiEvent& event) override;
 
 	private:
+		NeotrellisInterface* const 		m_Neotrellis;
+
 		// to store the directory entries for printing
 		std::vector<UiFileExplorerEntry> 	m_AudioFileEntries;
 
@@ -99,6 +103,9 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		void handleEffect1SinglePress();
 		void handleEffect2SinglePress();
 		void handleDoubleButtonPress();
+
+		// handle neotrellis button events
+		void onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY) override;
 
 		bool hasBrokenLock (bool& potLockedVal, float& potCachedVal, float newPotVal);
 		bool hasBrokenMenuChangeThreshold (float newVal, float cachedVal);

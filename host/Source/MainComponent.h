@@ -19,9 +19,102 @@
 #include "IMnemonicLCDRefreshEventListener.hpp"
 #include "CPPFile.hpp"
 #include "FakeSynth.hpp"
+#include "Neotrellis.hpp"
 
 #include <iostream>
 #include <fstream>
+
+constexpr unsigned int NEOTRELLIS_ROWS = 8;
+constexpr unsigned int NEOTRELLIS_COLS = 8;
+
+// class to emulate neotrellis
+class FakeNeotrellis : public NeotrellisInterface
+{
+	public:
+		struct CellEvent
+		{
+			uint8_t keyX;
+			uint8_t keyY;
+			bool    keyReleased;
+		};
+
+		FakeNeotrellis() : m_FakeButtons( new juce::TextButton*[NEOTRELLIS_ROWS] )
+		{
+			for ( unsigned int row = 0; row < NEOTRELLIS_ROWS; row++ )
+			{
+				m_FakeButtons[row] = new juce::TextButton[NEOTRELLIS_COLS];
+
+				for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
+				{
+					m_Callbacks[col + (row * NEOTRELLIS_COLS)] = nullptr;
+				}
+			}
+		}
+		~FakeNeotrellis() override
+		{
+			for ( unsigned int row = 0; row < NEOTRELLIS_ROWS; row++ )
+			{
+				delete[] m_FakeButtons[row];
+			}
+
+			delete[] m_FakeButtons;
+		}
+
+		juce::TextButton** getTextButtons() { return m_FakeButtons; }
+
+		void addCellEvent (const CellEvent& cellEvent)
+		{
+			m_CellEvents.push_back( cellEvent );
+		}
+
+		void begin (NeotrellisListener* listener) override
+		{
+			NeotrellisInterface::begin( listener );
+
+			for ( unsigned int row = 0; row < NEOTRELLIS_ROWS; row++ )
+			{
+				for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
+				{
+					this->setColor( row, col, 255, 255, 255 );
+				}
+			}
+		}
+
+		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) override
+		{
+			m_FakeButtons[keyRow][keyCol].setColour( juce::TextButton::buttonColourId, juce::Colour(r, g, b) );
+		}
+
+		void pollForEvents() override
+		{
+			for ( const CellEvent& cellEvent : m_CellEvents )
+			{
+				const uint8_t index = cellEvent.keyX + ( cellEvent.keyY * NEOTRELLIS_COLS );
+
+				if ( m_Callbacks[index] != nullptr )
+				{
+					m_Callbacks[index]( m_NeotrellisListener, this, cellEvent.keyReleased, cellEvent.keyX, cellEvent.keyY );
+				}
+			}
+
+			m_CellEvents.clear();
+		}
+
+		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override
+		{
+			const uint8_t index = keyCol + ( keyRow * NEOTRELLIS_COLS );
+			m_Callbacks[index] = callback;
+		}
+
+		uint8_t getNumRows() override { return NEOTRELLIS_ROWS; }
+		uint8_t getNumCols() override { return NEOTRELLIS_COLS; }
+
+	private:
+		std::vector<CellEvent> 	m_CellEvents;
+		juce::TextButton** 	m_FakeButtons;
+
+		NeotrellisCallback 	m_Callbacks[NEOTRELLIS_ROWS * NEOTRELLIS_COLS];
+};
 
 //==============================================================================
 /*
@@ -53,7 +146,8 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		bool keyStateChanged (bool isKeyDown) override;
 
 		void sliderValueChanged (juce::Slider* slider) override;
-		void buttonClicked (juce::Button* button) override;
+		void buttonClicked (juce::Button* button) override {}
+		void buttonStateChanged (juce::Button* button) override;
 		void updateToggleState (juce::Button* button);
 
 		void setMidiInput (int index);
@@ -65,6 +159,7 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		//==============================================================================
 		// Your private member variables go here...
 		// PresetManager presetManager;
+		FakeNeotrellis fakeNeotrellis;
 		MidiHandler midiHandler;
 		MidiHandler midiHandlerFakeSynth;
 		int lastInputIndex;

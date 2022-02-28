@@ -31,6 +31,7 @@ const unsigned int LOGO_FILE_SIZE = 119;
 
 //==============================================================================
 MainComponent::MainComponent() :
+	fakeNeotrellis(),
 	midiHandler(),
 	midiHandlerFakeSynth(),
 	lastInputIndex( 0 ),
@@ -52,7 +53,7 @@ MainComponent::MainComponent() :
 	midiInputList(),
 	midiInputListLbl(),
 	audioSettingsComponent( deviceManager, 2, 2, &audioSettingsBtn ),
-	uiManager( 128, 64, CP_FORMAT::MONOCHROME_1BIT ),
+	uiManager( 128, 64, CP_FORMAT::MONOCHROME_1BIT, &fakeNeotrellis ),
 	screenRep( juce::Image::RGB, 256, 128, true ) // this is actually double the size so we can actually see it
 {
 	// FLUSH DENORMALS TO ZERO!
@@ -186,6 +187,16 @@ MainComponent::MainComponent() :
 
 	addAndMakeVisible( effect2Btn );
 	effect2Btn.addListener( this );
+
+	juce::TextButton** fakeNeotrellisBtns = fakeNeotrellis.getTextButtons();
+	for ( unsigned int row = 0; row < NEOTRELLIS_ROWS; row++ )
+	{
+		for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
+		{
+			addAndMakeVisible( fakeNeotrellisBtns[row][col] );
+			fakeNeotrellisBtns[row][col].addListener( this );
+		}
+	}
 
 	addAndMakeVisible( audioSettingsBtn );
 	audioSettingsBtn.addListener( this );
@@ -394,6 +405,26 @@ void MainComponent::resized()
 	effect2Btn.setBounds      (sliderLeft, 340, (getWidth() / 2) - sliderLeft - 10, 20);
 	audioSettingsBtn.setBounds(sliderLeft, 950, getWidth() - sliderLeft - 10, 20);
 	midiInputList.setBounds   (sliderLeft, 980, getWidth() - sliderLeft - 10, 20);
+
+	// grid buttons
+	const unsigned int startX = sliderLeft + 10;
+	const unsigned int endX = getWidth() - sliderLeft - 10;
+	const unsigned int startY = 340 + 30;
+	const unsigned int endY = 950 - 30;
+	const unsigned int width = endX - startX;
+	const unsigned int height = endY - startY;
+	const unsigned int cellWidth = width / NEOTRELLIS_COLS;
+	const unsigned int cellHeight = height / NEOTRELLIS_ROWS;
+	juce::TextButton** fakeNeotrellisBtns = fakeNeotrellis.getTextButtons();
+	for ( unsigned int row = 0; row < NEOTRELLIS_ROWS; row++ )
+	{
+		for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
+		{
+			const unsigned int cellStartX = startX + ( cellWidth * col );
+			const unsigned int cellStartY = startY + ( cellHeight * row );
+			fakeNeotrellisBtns[row][col].setBounds( cellStartX, cellStartY, cellWidth, cellHeight );
+		}
+	}
 }
 
 void MainComponent::sliderValueChanged (juce::Slider* slider)
@@ -407,10 +438,38 @@ void MainComponent::sliderValueChanged (juce::Slider* slider)
 	}
 }
 
-void MainComponent::buttonClicked (juce::Button* button)
+void MainComponent::buttonStateChanged (juce::Button* button)
 {
+	static bool keyPressedArr[NEOTRELLIS_ROWS][NEOTRELLIS_COLS] = { false };
 	try
 	{
+		const juce::Button::ButtonState buttonOver = juce::Button::ButtonState::buttonOver;
+		const juce::Button::ButtonState buttonDown = juce::Button::ButtonState::buttonDown;
+		const juce::Button::ButtonState buttonNorm = juce::Button::ButtonState::buttonNormal;
+
+		if ( button->getState() == juce::Button::ButtonState::buttonOver || button->getState() == juce::Button::ButtonState::buttonDown )
+		{
+			juce::TextButton** fakeNeotrellisButtons = fakeNeotrellis.getTextButtons();
+			for ( unsigned int row = 0; row < NEOTRELLIS_ROWS; row++ )
+			{
+				for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
+				{
+					if ( button == &fakeNeotrellisButtons[row][col]
+					  	&& (
+						  	(keyPressedArr[row][col] == true && (button->getState() == buttonOver
+											     || button->getState() == buttonNorm))
+							|| button->getState() == buttonDown )
+					   )
+					{
+						keyPressedArr[row][col] = button->isDown();
+						fakeNeotrellis.addCellEvent( FakeNeotrellis::CellEvent{ static_cast<uint8_t>(row),
+												static_cast<uint8_t>(col), ! button->isDown()} );
+					}
+				}
+			}
+		}
+
+		fakeNeotrellis.pollForEvents();
 	}
 	catch (std::exception& e)
 	{

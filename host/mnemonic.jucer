@@ -108,6 +108,7 @@
       <FILE id="cw35LA" name="FakeSynth.hpp" compile="0" resource="0" file="../include/FakeSynth.hpp"/>
       <FILE id="Ge95Yh" name="IAllocator.cpp" compile="1" resource="0" file="../lib/DevLib/src/IAllocator.cpp"/>
       <FILE id="Ge95LA" name="IAllocator.hpp" compile="0" resource="0" file="../lib/DevLib/include/IAllocator.hpp"/>
+      <FILE id="Ku95LA" name="Neotrellis.hpp" compile="0" resource="0" file="../lib/DevLib/include/Neotrellis.hpp"/>
       <FILE id="we45Yh" name="PolyBLEPOsc.cpp" compile="1" resource="0" file="../lib/SAL/src/PolyBLEPOsc.cpp"/>
       <FILE id="we45LA" name="PolyBLEPOsc.hpp" compile="0" resource="0" file="../lib/SAL/include/PolyBLEPOsc.hpp"/>
       <FILE id="D4ngYh" name="MnemonicUiManager.cpp" compile="1" resource="0"
