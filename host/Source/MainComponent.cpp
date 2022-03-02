@@ -276,6 +276,9 @@ bool MainComponent::keyStateChanged (bool isKeyDown)
 
 void MainComponent::timerCallback()
 {
+	// update transport and other periodic data
+	audioManager.publishUiEvents();
+
 	// these next lines are to simulate sending midi events over usart
 	std::vector<MidiEvent>& midiEventsToSendVec = audioManager.getMidiEventsToSendVec();
 	for ( const MidiEvent& midiEvent : midiEventsToSendVec )

@@ -3,6 +3,9 @@
 
 #include <limits>
 
+#define MNEMONIC_COLOR_INACTIVE 150, 150, 150
+#define MNEMONIC_COLOR_TRANSPORT_ACTIVE 60, 135, 255
+
 constexpr unsigned int MNEMONIC_MAX_MIDI_TRACK_EVENTS = 1000; // the max number of midi events able to record for a midi track
 
 constexpr unsigned int MNEMONIC_POT_STABIL_NUM = 50; // pot stabilization stuff

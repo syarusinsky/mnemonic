@@ -15,6 +15,7 @@ enum class UiEventType : unsigned int
 	INVALID_FILESYSTEM, 	// for when the sd card isn't found or the file system isn't fat16
 	ENTER_STATUS_PAGE,
 	ENTER_FILE_EXPLORER,
+	TRANSPORT_MOVE,
 };
 
 struct UiFileExplorerEntry

@@ -8,10 +8,11 @@
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
 	m_FileManager( sdCard, &m_AxiSramAllocator ),
+	m_TransportProgress( 0 ),
 	m_AudioTracks(),
 	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
 	m_MasterClockCount( 0 ),
-	m_CurrentMaxLoopCount( 1 ),
+	m_CurrentMaxLoopCount( 8 ), // 8 to avoid arithmetic exception when performing modulo
 	m_MidiTracks(),
 	m_MidiEventsToSend(),
 	m_RecordingMidiState( MidiRecordingState::NOT_RECORDING ),
@@ -27,6 +28,16 @@ MnemonicAudioManager::~MnemonicAudioManager()
 {
 }
 
+void MnemonicAudioManager::publishUiEvents()
+{
+	static unsigned int previousTransportProgress = 0;
+	if ( m_TransportProgress != previousTransportProgress )
+	{
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::TRANSPORT_MOVE, nullptr, 0, m_TransportProgress) );
+		previousTransportProgress = m_TransportProgress;
+	}
+}
+
 void MnemonicAudioManager::verifyFileSystem()
 {
 	if ( ! m_FileManager.isValidFatFileSystem() )
@@ -38,6 +49,15 @@ void MnemonicAudioManager::verifyFileSystem()
 
 void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
+	// update transport state
+	const unsigned int numSamplesPerCell = m_CurrentMaxLoopCount / 8;
+	const unsigned int progressInCell = m_MasterClockCount % ( numSamplesPerCell );
+	if ( progressInCell == 0 && m_CurrentMaxLoopCount > 8 )
+	{
+		m_TransportProgress = ( m_MasterClockCount / numSamplesPerCell ) % 8;
+	}
+
+	// update midi recording state
 	if ( m_RecordingMidiState == MidiRecordingState::WAITING_TO_RECORD && m_MasterClockCount == 0 )
 	{
 		m_RecordingMidiState = MidiRecordingState::RECORDING;
@@ -50,8 +70,10 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		this->endRecordingMidiTrack();
 	}
 
+	// update master clock count state
 	m_MasterClockCount = ( m_MasterClockCount + 1 ) % m_CurrentMaxLoopCount;
 
+	// fill buffer with audio track data
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
 		audioTrack.call( writeBufferL, writeBufferR );
@@ -62,6 +84,7 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		}
 	}
 
+	// fill midi event queue with midi events at this time code
 	for ( MidiTrack& midiTrack : m_MidiTracks )
 	{
 		midiTrack.addMidiEventsAtTimeCode( m_MasterClockCount, m_MidiEventsToSend );

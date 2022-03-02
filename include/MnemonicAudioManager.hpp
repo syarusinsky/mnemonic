@@ -31,6 +31,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSramPtr, unsigned int axiSramSizeInBytes);
 		~MnemonicAudioManager() override;
 
+		void publishUiEvents(); // updates the periodic ui events
+
 		void verifyFileSystem(); // should be called on boot up at the very least
 
 		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
@@ -43,6 +45,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 	private:
 		IAllocator 			m_AxiSramAllocator;
 		Fat16FileManager 		m_FileManager;
+
+		unsigned int 			m_TransportProgress;
 
 		std::vector<AudioTrack> 	m_AudioTracks;
 

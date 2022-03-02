@@ -4,9 +4,6 @@
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 
-// TODO remove after testing
-#include <iostream>
-
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
 void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
@@ -51,6 +48,7 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 		for ( unsigned int col = 0; col < m_Neotrellis->getNumCols(); col++ )
 		{
 			m_Neotrellis->registerCallback( row, col, onNeotrellisButtonHelperFunc );
+			m_Neotrellis->setColor( row, col, MNEMONIC_COLOR_INACTIVE );
 		}
 	}
 }
@@ -362,7 +360,6 @@ void MnemonicUiManager::handleDoubleButtonPress()
 
 void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
 {
-	std::cout << "NEOTRELLIS EVENT: x = " << std::to_string(keyX) << "   y = " << std::to_string(keyY) << "   released = " << keyReleased << std::endl;
 }
 
 void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
@@ -395,6 +392,15 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
 
 			m_CurrentMenu = MNEMONIC_MENUS::FILE_EXPLORER;
+		}
+
+			break;
+		case UiEventType::TRANSPORT_MOVE:
+		{
+			const int currentCol = event.getChannel();
+			const int previousCol = ( currentCol - 1 >= 0 ) ? currentCol - 1 : 7;
+			m_Neotrellis->setColor( 0, static_cast<uint8_t>(currentCol), MNEMONIC_COLOR_TRANSPORT_ACTIVE );
+			m_Neotrellis->setColor( 0, static_cast<uint8_t>(previousCol), MNEMONIC_COLOR_INACTIVE );
 		}
 
 			break;
