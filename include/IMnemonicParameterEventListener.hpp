@@ -12,12 +12,17 @@
 class MnemonicParameterEvent : public IEvent
 {
 	public:
-		MnemonicParameterEvent (unsigned int value, unsigned int channel);
+		MnemonicParameterEvent (unsigned int cellX, unsigned int cellY, unsigned int value, unsigned int channel);
 		~MnemonicParameterEvent() override;
+
+		unsigned int getCellX() const;
+		unsigned int getCellY() const;
 
 		unsigned int getValue() const;
 
 	private:
+		unsigned int 	m_CellX;
+		unsigned int 	m_CellY;
 		unsigned int  	m_Value;
 };
 

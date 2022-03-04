@@ -12,7 +12,7 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 	m_AudioTracks(),
 	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
 	m_MasterClockCount( 0 ),
-	m_CurrentMaxLoopCount( 8 ), // 8 to avoid arithmetic exception when performing modulo
+	m_CurrentMaxLoopCount( MNEMONIC_NEOTRELLIS_COLS ), // 8 to avoid arithmetic exception when performing modulo
 	m_MidiTracks(),
 	m_MidiEventsToSend(),
 	m_RecordingMidiState( MidiRecordingState::NOT_RECORDING ),
@@ -50,11 +50,11 @@ void MnemonicAudioManager::verifyFileSystem()
 void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 {
 	// update transport state
-	const unsigned int numSamplesPerCell = m_CurrentMaxLoopCount / 8;
+	const unsigned int numSamplesPerCell = m_CurrentMaxLoopCount / MNEMONIC_NEOTRELLIS_COLS;
 	const unsigned int progressInCell = m_MasterClockCount % ( numSamplesPerCell );
-	if ( progressInCell == 0 && m_CurrentMaxLoopCount > 8 )
+	if ( progressInCell == 0 && m_CurrentMaxLoopCount > MNEMONIC_NEOTRELLIS_COLS )
 	{
-		m_TransportProgress = ( m_MasterClockCount / numSamplesPerCell ) % 8;
+		m_TransportProgress = ( m_MasterClockCount / numSamplesPerCell ) % MNEMONIC_NEOTRELLIS_COLS;
 	}
 
 	// update midi recording state

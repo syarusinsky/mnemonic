@@ -465,8 +465,8 @@ void MainComponent::buttonStateChanged (juce::Button* button)
 					   )
 					{
 						keyPressedArr[row][col] = button->isDown();
-						fakeNeotrellis.addCellEvent( FakeNeotrellis::CellEvent{ static_cast<uint8_t>(row),
-												static_cast<uint8_t>(col), ! button->isDown()} );
+						fakeNeotrellis.addCellEvent( FakeNeotrellis::CellEvent{ static_cast<uint8_t>(col),
+												static_cast<uint8_t>(row), ! button->isDown()} );
 					}
 				}
 			}

@@ -29,6 +29,20 @@ enum class MNEMONIC_MENUS
 	FILE_EXPLORER
 };
 
+enum class CELL_STATE
+{
+	INACTIVE,
+	LOADING,
+	NOT_PLAYING,
+	PLAYING
+};
+
+struct CellPos
+{
+	unsigned int x = 0;
+	unsigned int y = 0;
+};
+
 class Font;
 
 class MnemonicUiManager : public Surface, public IPotEventListener, public IButtonEventListener, public IMnemonicUiEventListener,
@@ -61,7 +75,13 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		ScrollableMenuModel 			m_AudioFileMenuModel;
 
 		// the current menu the ui is on
-		MNEMONIC_MENUS 	m_CurrentMenu;
+		MNEMONIC_MENUS 				m_CurrentMenu;
+
+		// the current cell being acted upon (whether that's through file assignment, midi recording, ect)
+		CellPos 				m_CurrentCell;
+
+		// the current state of each cell
+		CELL_STATE 				m_CellStates[MNEMONIC_NEOTRELLIS_ROWS][MNEMONIC_NEOTRELLIS_COLS];
 
 		// the parameters each effect pot is currently assigned to
 		PARAM_CHANNEL 	m_Effect1PotCurrentParam;
@@ -113,6 +133,9 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		void displayErrorMessage (const std::string& errorMessage);
 
 		void drawScrollableMenu (ScrollableMenuModel& menu, bool (MnemonicUiManager::*shouldTickFunc)(unsigned int), MnemonicUiManager& ui);
+
+		void setCellStateAndColor (unsigned int cellX, unsigned int cellY, const CELL_STATE& state);
+		CELL_STATE getCellState (unsigned int cellX, unsigned int cellY);
 };
 
 #endif // MNEMONICUIMANAGER_HPP

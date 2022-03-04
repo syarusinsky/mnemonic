@@ -4,6 +4,9 @@
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 
+// TODO remove this after testing
+#include <iostream>
+
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
 void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
@@ -17,6 +20,8 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_AudioFileEntries(),
 	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
+	m_CurrentCell(),
+	m_CellStates{},
 	m_Effect1PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect2PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect3PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
@@ -48,7 +53,7 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 		for ( unsigned int col = 0; col < m_Neotrellis->getNumCols(); col++ )
 		{
 			m_Neotrellis->registerCallback( row, col, onNeotrellisButtonHelperFunc );
-			m_Neotrellis->setColor( row, col, MNEMONIC_COLOR_INACTIVE );
+			this->setCellStateAndColor( col, row, CELL_STATE::INACTIVE );
 		}
 	}
 }
@@ -311,9 +316,7 @@ void MnemonicUiManager::handleEffect1SinglePress()
 {
 	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
-		// start midi recording
-		IMnemonicParameterEventListener::PublishEvent(
-				MnemonicParameterEvent(0, static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
+		// do nothing for now
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
@@ -326,9 +329,7 @@ void MnemonicUiManager::handleEffect2SinglePress()
 {
 	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
-		// end midi recording
-		IMnemonicParameterEventListener::PublishEvent(
-				MnemonicParameterEvent(0, static_cast<unsigned int>(PARAM_CHANNEL::END_MIDI_RECORDING)) );
+		// do nothing for now
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
@@ -341,16 +342,18 @@ void MnemonicUiManager::handleDoubleButtonPress()
 {
 	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
-		// enter file explorer
-		IMnemonicParameterEventListener::PublishEvent(
-				MnemonicParameterEvent(0, static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
+		// do nothing for now
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
+		// set cell states corrrectly
+		this->setCellStateAndColor( m_CurrentCell.x, m_CurrentCell.y, CELL_STATE::NOT_PLAYING );
+
 		// select file in file explorer
 		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getEntryIndex()].m_Index;
 		IMnemonicParameterEventListener::PublishEvent(
-				MnemonicParameterEvent(index, static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
+				MnemonicParameterEvent(m_CurrentCell.x, m_CurrentCell.y, index,
+					static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
 
 		// return to status menu
 		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
@@ -360,6 +363,45 @@ void MnemonicUiManager::handleDoubleButtonPress()
 
 void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
 {
+	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
+	{
+		const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( keyY );
+
+		if ( row == MNEMONIC_ROW::TRANSPORT )
+		{
+			// for now do nothing, maybe in the future scrub audio and midi tracks to this time code?
+		}
+		else if ( (row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS) )
+		{
+			CELL_STATE cellState = this->getCellState( keyX, keyY );
+
+			// if inactive, enter file explorer to load a file
+			if ( cellState == CELL_STATE::INACTIVE )
+			{
+				this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
+				m_CurrentCell.x = keyX;
+				m_CurrentCell.y = keyY;
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, 0,
+							static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
+			}
+			else if ( cellState == CELL_STATE::NOT_PLAYING )
+			{
+				std::cout << "SHOULD START PLAYING" << std::endl;
+			}
+			else if ( cellState == CELL_STATE::PLAYING )
+			{
+				std::cout << "SHOULD STOP PLAYING" << std::endl;
+			}
+		}
+		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+		{
+			std::cout << "MIDI LOOPS: " << std::to_string(keyX) << std::endl;
+		}
+	}
 }
 
 void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
@@ -472,4 +514,65 @@ void MnemonicUiManager::drawScrollableMenu (ScrollableMenuModel& menu, bool (Mne
 
 	IMnemonicLCDRefreshEventListener::PublishEvent(
 			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+}
+
+void MnemonicUiManager::setCellStateAndColor (unsigned int cellX, unsigned int cellY, const CELL_STATE& state)
+{
+	m_CellStates[cellX][cellY] = state;
+
+	MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
+
+	if ( state == CELL_STATE::INACTIVE )
+	{
+		m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_INACTIVE );
+	}
+	else if ( state == CELL_STATE::LOADING )
+	{
+		m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_LOADING_FILE );
+	}
+	else if ( state == CELL_STATE::NOT_PLAYING )
+	{
+		if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_1_NOT_PLAYING );
+		}
+		else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_2_NOT_PLAYING );
+		}
+		else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_ONESHOTS_NOT_PLAYING );
+		}
+		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_NOT_PLAYING );
+		}
+	}
+	else if ( state == CELL_STATE::PLAYING )
+	{
+		if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_1_PLAYING );
+		}
+		else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_2_PLAYING );
+		}
+		else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_ONESHOTS_PLAYING );
+		}
+		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_PLAYING );
+		}
+	}
+}
+
+CELL_STATE MnemonicUiManager::getCellState (unsigned int cellX, unsigned int cellY)
+{
+	return m_CellStates[cellX][cellY];
 }

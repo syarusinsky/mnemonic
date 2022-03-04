@@ -75,7 +75,7 @@ class FakeNeotrellis : public NeotrellisInterface
 			{
 				for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
 				{
-					this->setColor( row, col, 255, 255, 255 );
+					this->setColor( row, col, MNEMONIC_COLOR_INACTIVE );
 				}
 			}
 		}

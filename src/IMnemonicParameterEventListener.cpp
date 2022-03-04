@@ -4,8 +4,10 @@
 EventDispatcher<IMnemonicParameterEventListener, MnemonicParameterEvent,
 		&IMnemonicParameterEventListener::onMnemonicParameterEvent> IMnemonicParameterEventListener::m_EventDispatcher;
 
-MnemonicParameterEvent::MnemonicParameterEvent (unsigned int value, unsigned int channel) :
+MnemonicParameterEvent::MnemonicParameterEvent (unsigned int cellX, unsigned int cellY, unsigned int value, unsigned int channel) :
 	IEvent( channel ),
+	m_CellX( cellX ),
+	m_CellY( cellY ),
 	m_Value( value )
 {
 }
@@ -17,6 +19,16 @@ MnemonicParameterEvent::~MnemonicParameterEvent()
 unsigned int MnemonicParameterEvent::getValue() const
 {
 	return m_Value;
+}
+
+unsigned int MnemonicParameterEvent::getCellX() const
+{
+	return m_CellX;
+}
+
+unsigned int MnemonicParameterEvent::getCellY() const
+{
+	return m_CellY;
 }
 
 IMnemonicParameterEventListener::~IMnemonicParameterEventListener()
