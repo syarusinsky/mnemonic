@@ -16,6 +16,7 @@ enum class UiEventType : unsigned int
 	ENTER_STATUS_PAGE,
 	ENTER_FILE_EXPLORER,
 	TRANSPORT_MOVE,
+	AUDIO_TRACK_FINISHED
 };
 
 struct UiFileExplorerEntry
@@ -27,7 +28,8 @@ struct UiFileExplorerEntry
 class MnemonicUiEvent : public IEvent
 {
 	public:
-		MnemonicUiEvent (const UiEventType& eventType, void* dataPtr, unsigned int dataNumElements, unsigned int channel);
+		MnemonicUiEvent (const UiEventType& eventType, void* dataPtr, unsigned int dataNumElements, unsigned int channel,
+					unsigned int cellX = 0, unsigned int cellY = 0);
 		~MnemonicUiEvent() override;
 
 		UiEventType getEventType() const { return m_EventType; }
@@ -36,10 +38,15 @@ class MnemonicUiEvent : public IEvent
 
 		unsigned int getDataNumElements() const { return m_DataNumElements; }
 
+		unsigned int getCellX() const { return m_CellX; }
+		unsigned int getCellY() const { return m_CellY; }
+
 	private:
 		UiEventType 	m_EventType;
 		void* 		m_DataPtr;
 		unsigned int 	m_DataNumElements;
+		unsigned int 	m_CellX;
+		unsigned int 	m_CellY;
 };
 
 class IMnemonicUiEventListener : public IEventListener

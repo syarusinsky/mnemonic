@@ -4,9 +4,6 @@
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 
-// TODO remove this after testing
-#include <iostream>
-
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
 void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
@@ -20,7 +17,7 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_AudioFileEntries(),
 	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
-	m_CurrentCell(),
+	m_CachedCell(),
 	m_CellStates{},
 	m_Effect1PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect2PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
@@ -347,12 +344,12 @@ void MnemonicUiManager::handleDoubleButtonPress()
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
 		// set cell states corrrectly
-		this->setCellStateAndColor( m_CurrentCell.x, m_CurrentCell.y, CELL_STATE::NOT_PLAYING );
+		this->setCellStateAndColor( m_CachedCell.x, m_CachedCell.y, CELL_STATE::NOT_PLAYING );
 
 		// select file in file explorer
 		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getEntryIndex()].m_Index;
 		IMnemonicParameterEventListener::PublishEvent(
-				MnemonicParameterEvent(m_CurrentCell.x, m_CurrentCell.y, index,
+				MnemonicParameterEvent(m_CachedCell.x, m_CachedCell.y, index,
 					static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
 
 		// return to status menu
@@ -363,7 +360,7 @@ void MnemonicUiManager::handleDoubleButtonPress()
 
 void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
 {
-	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
+	if ( keyReleased && m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
 		const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( keyY );
 
@@ -379,19 +376,25 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 			if ( cellState == CELL_STATE::INACTIVE )
 			{
 				this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
-				m_CurrentCell.x = keyX;
-				m_CurrentCell.y = keyY;
+				m_CachedCell.x = keyX;
+				m_CachedCell.y = keyY;
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, 0,
 							static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
 			}
 			else if ( cellState == CELL_STATE::NOT_PLAYING )
 			{
-				std::cout << "SHOULD START PLAYING" << std::endl;
+				this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_AUDIO)) );
 			}
 			else if ( cellState == CELL_STATE::PLAYING )
 			{
-				std::cout << "SHOULD STOP PLAYING" << std::endl;
+				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
+							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_AUDIO)) );
 			}
 		}
 		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS
@@ -399,7 +402,6 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
-			std::cout << "MIDI LOOPS: " << std::to_string(keyX) << std::endl;
 		}
 	}
 }
@@ -422,12 +424,14 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 		case UiEventType::ENTER_FILE_EXPLORER:
 		{
 			// enter file explorer page and display list of options
-			m_AudioFileEntries.clear();
-			UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
-			for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
+			if ( m_AudioFileEntries.empty() )
 			{
-				m_AudioFileEntries.push_back( entries[entryNum] );
-				m_AudioFileMenuModel.addEntry( m_AudioFileEntries[entryNum].m_FilenameDisplay );
+				UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
+				for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
+				{
+					m_AudioFileEntries.push_back( entries[entryNum] );
+					m_AudioFileMenuModel.addEntry( m_AudioFileEntries[entryNum].m_FilenameDisplay );
+				}
 			}
 
 			// draw the menu with the audio files
@@ -444,6 +448,13 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			m_Neotrellis->setColor( 0, static_cast<uint8_t>(currentCol), MNEMONIC_COLOR_TRANSPORT_ACTIVE );
 			m_Neotrellis->setColor( 0, static_cast<uint8_t>(previousCol), MNEMONIC_COLOR_INACTIVE );
 		}
+
+			break;
+		case UiEventType::AUDIO_TRACK_FINISHED:
+			if ( static_cast<MNEMONIC_ROW>(event.getCellY()) == MNEMONIC_ROW::AUDIO_ONESHOTS )
+			{
+				this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
+			}
 
 			break;
 		default:

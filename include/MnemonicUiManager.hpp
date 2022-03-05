@@ -77,8 +77,8 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		// the current menu the ui is on
 		MNEMONIC_MENUS 				m_CurrentMenu;
 
-		// the current cell being acted upon (whether that's through file assignment, midi recording, ect)
-		CellPos 				m_CurrentCell;
+		// the cached cell being acted upon (whether that's through file assignment, midi recording, ect)
+		CellPos 				m_CachedCell;
 
 		// the current state of each cell
 		CELL_STATE 				m_CellStates[MNEMONIC_NEOTRELLIS_ROWS][MNEMONIC_NEOTRELLIS_COLS];

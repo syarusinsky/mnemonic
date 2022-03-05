@@ -19,11 +19,14 @@ class Fat16FileManager;
 class AudioTrack : public IBufferCallback<int16_t, true>
 {
 	public:
-		AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, unsigned int b12BufferSizes, IAllocator& allocator,
-				uint16_t* decompressedBuffer);
+		AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager& fileManager, const Fat16Entry& entry,
+				unsigned int b12BufferSizes, IAllocator& allocator, uint16_t* decompressedBuffer);
 		~AudioTrack() override;
 
 		bool operator== (const AudioTrack& other) const;
+
+		unsigned int getCellX() const { return m_CellX; }
+		unsigned int getCellY() const { return m_CellY; }
 
 		Fat16Entry getFatEntry() const { return m_FatEntry; }
 
@@ -35,6 +38,8 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		void play();
 		void reset();
 
+		bool justFinished() { const bool justFinished = m_JustFinished; m_JustFinished = false; return justFinished; }
+
 		void setLoopable (const bool isLoopable);
 		bool isLoopable() const { return m_IsLoopable; }
 		void setLoopLength (unsigned int& currentMaxLoopLength); // also modifies the max loop length if this track is longer
@@ -45,6 +50,9 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
 
 	private:
+		const unsigned int 	m_CellX;
+		const unsigned int 	m_CellY;
+
 		Fat16FileManager& 	m_FileManager;
 		Fat16Entry 		m_FatEntry;
 
@@ -64,6 +72,9 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		float 			m_AmplitudeR;
 
 		bool 			m_IsLoopable;
+
+		bool 			m_JustFinished; // false always until the track has just completed
+							// by reading this value it turns back to false
 
 		uint8_t* getBuffer (bool writeBuffer);
 

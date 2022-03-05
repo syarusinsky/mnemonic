@@ -6,8 +6,10 @@
 
 constexpr unsigned int COMPRESSED_BUFFER_SIZE = static_cast<unsigned int>( ABUFFER_SIZE * 2.0f * 0.75f );
 
-AudioTrack::AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, unsigned int b12BufferSize, IAllocator& allocator,
-			uint16_t* decompressedBuffer) :
+AudioTrack::AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager& fileManager, const Fat16Entry& entry,
+			unsigned int b12BufferSize, IAllocator& allocator, uint16_t* decompressedBuffer) :
+	m_CellX( cellX ),
+	m_CellY( cellY ),
 	m_FileManager( fileManager ),
 	m_FatEntry( entry ),
 	m_FileLengthInAudioBlocks( (entry.getFileSizeInBytes() * (1.0f / 0.75f) * 0.5f) / ABUFFER_SIZE ),
@@ -20,7 +22,8 @@ AudioTrack::AudioTrack (Fat16FileManager& fileManager, const Fat16Entry& entry, 
 	m_DecompressedBuffer( decompressedBuffer ),
 	m_AmplitudeL( 1.0f ),
 	m_AmplitudeR( 1.0f ),
-	m_IsLoopable( false )
+	m_IsLoopable( false ),
+	m_JustFinished( false )
 {
 	for ( int byte = 0; byte < m_B12CircularBufferSize; byte++ )
 	{
@@ -50,6 +53,8 @@ void AudioTrack::play()
 
 void AudioTrack::reset()
 {
+	m_JustFinished = false;
+
 	m_FatEntry.getFileTransferInProgressFlagRef() = false;
 
 	m_B12WritePos = 0;
@@ -107,6 +112,7 @@ void AudioTrack::call (int16_t* writeBufferL, int16_t* writeBufferR)
 			}
 		}
 
+		if ( ! m_FatEntry.getFileTransferInProgressFlagRef() ) m_JustFinished = true;;
 	}
 
 	if ( this->shouldDecompress() )
