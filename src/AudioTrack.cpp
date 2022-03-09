@@ -6,7 +6,7 @@
 
 constexpr unsigned int COMPRESSED_BUFFER_SIZE = static_cast<unsigned int>( ABUFFER_SIZE * 2.0f * 0.75f );
 
-AudioTrack::AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager& fileManager, const Fat16Entry& entry,
+AudioTrack::AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager* fileManager, const Fat16Entry& entry,
 			unsigned int b12BufferSize, IAllocator& allocator, uint16_t* decompressedBuffer) :
 	m_CellX( cellX ),
 	m_CellY( cellY ),
@@ -48,7 +48,7 @@ void AudioTrack::play()
 {
 	this->reset();
 
-	m_FileManager.readEntry( m_FatEntry );
+	m_FileManager->readEntry( m_FatEntry );
 }
 
 void AudioTrack::reset()
@@ -101,7 +101,7 @@ void AudioTrack::call (int16_t* writeBufferL, int16_t* writeBufferR)
 	{
 		while ( this->shouldFillNextBuffer() )
 		{
-			SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( m_FatEntry );
+			SharedData<uint8_t> data = m_FileManager->getSelectedFileNextSector( m_FatEntry );
 			if ( m_FatEntry.getFileTransferInProgressFlagRef() || data.getPtr() != nullptr )
 			{
 				this->fillNextBuffer( &data[0] );

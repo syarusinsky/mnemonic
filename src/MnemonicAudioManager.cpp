@@ -179,6 +179,10 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			this->loadFile( cellX, cellY, val );
 
 			break;
+		case PARAM_CHANNEL::UNLOAD_FILE:
+			this->unloadFile( cellX, cellY );
+
+			break;
 		case PARAM_CHANNEL::PLAY_OR_STOP_AUDIO:
 			this->playOrStopTrack( cellX, cellY, static_cast<bool>(val) );
 
@@ -261,86 +265,84 @@ void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cel
 
 void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, unsigned int index)
 {
-	const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
+	MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
 
-	// find the stereo channel if available
-	const Fat16Entry* entryOtherChannel = this->lookForOtherChannel( entry->getFilenameDisplay() );
-
-	if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
-		|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
+	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 	{
-		AudioTrack trackL( cellX, cellY, m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(),
-					m_AxiSramAllocator, m_DecompressedBuffer );
-		AudioTrack trackR( cellX, cellY, m_FileManager, (entryOtherChannel) ? *entryOtherChannel : *entry,
-					m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator, m_DecompressedBuffer );
+		const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
 
-		// TODO for now we're allowing multiple of the same track on different cells, but we'll need this code for removing files from cells
-		/*
-		for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end(); trackInVecIt++ )
+		// find the stereo channel if available
+		const Fat16Entry* entryOtherChannel = this->lookForOtherChannel( entry->getFilenameDisplay() );
+
+		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
+			|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
 		{
-			AudioTrack& trackInVec = *trackInVecIt;
-			if ( trackL == trackInVec )
+			AudioTrack trackL( cellX, cellY, &m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(),
+						m_AxiSramAllocator, m_DecompressedBuffer );
+			AudioTrack trackR( cellX, cellY, &m_FileManager, (entryOtherChannel) ? *entryOtherChannel : *entry,
+						m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
+						m_DecompressedBuffer );
+
+			m_AudioTracks.push_back( trackL );
+			AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
+			const bool isOneshot = static_cast<MNEMONIC_ROW>( cellY ) == MNEMONIC_ROW::AUDIO_ONESHOTS;
+			if ( ! isOneshot ) trackLRef.setLoopLength( m_CurrentMaxLoopCount );
+			if ( entryOtherChannel )
 			{
-				// the file is already loaded
-				if ( trackInVec.isLoopable() )
-				{
-					trackInVec.setLoopable( false );
-				}
-				else
-				{
-					trackInVec.setLoopable( true );
-				}
-
-				m_AudioTracks.erase( trackInVecIt );
-
-				if ( ! entryOtherChannel ) return;
+				trackLRef.setAmplitudes( 1.0f, 0.0f );
+				m_AudioTracks.push_back( trackR );
+				AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
+				if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
+				trackRRef.setAmplitudes( 0.0f, 1.0f );
 			}
-		}
 
-		for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end(); trackInVecIt++ )
-		{
-			AudioTrack& trackInVec = *trackInVecIt;
-			if ( trackR == trackInVec )
+			// reset the loop length for all audio tracks
+			for ( AudioTrack& trackInVec : m_AudioTracks )
 			{
-				// the file is already loaded
-				if ( trackInVec.isLoopable() )
-				{
-					trackInVec.setLoopable( false );
-				}
-				else
-				{
-					trackInVec.setLoopable( true );
-				}
-
-				m_AudioTracks.erase( trackInVecIt );
-
-				return;
+				if ( ! isOneshot ) trackInVec.setLoopLength( m_CurrentMaxLoopCount );
 			}
-		}
-		*/
-
-		m_AudioTracks.push_back( trackL );
-		AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
-		const bool isOneshot = static_cast<MNEMONIC_ROW>( cellY ) == MNEMONIC_ROW::AUDIO_ONESHOTS;
-		if ( ! isOneshot ) trackLRef.setLoopLength( m_CurrentMaxLoopCount );
-		if ( entryOtherChannel )
-		{
-			trackLRef.setAmplitudes( 1.0f, 0.0f );
-			m_AudioTracks.push_back( trackR );
-			AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
-			if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
-			trackRRef.setAmplitudes( 0.0f, 1.0f );
-		}
-
-		// reset the loop length for all audio tracks
-		for ( AudioTrack& trackInVec : m_AudioTracks )
-		{
-			if ( ! isOneshot ) trackInVec.setLoopLength( m_CurrentMaxLoopCount );
 		}
 	}
 }
 
-const Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenameDisplay)
+void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
+{
+	MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
+
+	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+	{
+		Fat16Entry* entryOtherChannel = nullptr;
+
+		for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end(); trackInVecIt++ )
+		{
+			AudioTrack& trackInVec = *trackInVecIt;
+			if ( cellX == trackInVec.getCellX() && cellY == trackInVec.getCellY() )
+			{
+				// look for stereo entry before erasing track
+				entryOtherChannel = this->lookForOtherChannel( trackInVec.getFatEntry().getFilenameDisplay() );
+
+				m_AudioTracks.erase( trackInVecIt );
+
+				break;
+			}
+		}
+
+		if ( ! entryOtherChannel ) return;
+
+		for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end(); trackInVecIt++ )
+		{
+			AudioTrack& trackInVec = *trackInVecIt;
+			if ( cellX == trackInVec.getCellX() && cellY == trackInVec.getCellY() )
+			{
+				m_AudioTracks.erase( trackInVecIt );
+
+				break;
+			}
+		}
+	}
+}
+
+Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenameDisplay)
 {
 	unsigned int dotIndex = 0;
 	for ( unsigned int characterNum = 0; characterNum < FAT16_FILENAME_SIZE + FAT16_EXTENSION_SIZE + 2; characterNum++ )
@@ -369,7 +371,7 @@ const Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenam
 		return nullptr;
 	}
 
-	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+	for ( Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
 	{
 		if ( strcmp(entry->getFilenameDisplay(), filenameToLookFor) == 0 )
 		{

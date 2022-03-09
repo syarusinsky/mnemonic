@@ -384,10 +384,20 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 			}
 			else if ( cellState == CELL_STATE::NOT_PLAYING )
 			{
-				this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
-				IMnemonicParameterEventListener::PublishEvent(
-						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
-							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_AUDIO)) );
+				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, 0,
+								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+				}
+				else
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_AUDIO)) );
+				}
 			}
 			else if ( cellState == CELL_STATE::PLAYING )
 			{

@@ -68,13 +68,14 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		void playOrStopTrack (unsigned int cellX, unsigned int cellY, bool play);
 
 		void loadFile (unsigned int cellX, unsigned int cellY, unsigned int index);
+		void unloadFile (unsigned int cellX, unsigned int cellY);
 
 		void startRecordingMidiTrack(); // TODO probably need to assign a 'cell'
 		void endRecordingMidiTrack();
 
 		void enterFileExplorer();
 
-		const Fat16Entry* lookForOtherChannel (const char* filenameDisplay); // for looking for other stereo channel
+		Fat16Entry* lookForOtherChannel (const char* filenameDisplay); // for looking for other stereo channel
 };
 
 #endif // MNEMONICAUDIOMANAGER_HPP

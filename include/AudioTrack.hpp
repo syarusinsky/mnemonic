@@ -19,7 +19,7 @@ class Fat16FileManager;
 class AudioTrack : public IBufferCallback<int16_t, true>
 {
 	public:
-		AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager& fileManager, const Fat16Entry& entry,
+		AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager* fileManager, const Fat16Entry& entry,
 				unsigned int b12BufferSizes, IAllocator& allocator, uint16_t* decompressedBuffer);
 		~AudioTrack() override;
 
@@ -50,13 +50,13 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
 
 	private:
-		const unsigned int 	m_CellX;
-		const unsigned int 	m_CellY;
+		unsigned int 		m_CellX;
+		unsigned int 		m_CellY;
 
-		Fat16FileManager& 	m_FileManager;
+		Fat16FileManager* 	m_FileManager;
 		Fat16Entry 		m_FatEntry;
 
-		const unsigned int 	m_FileLengthInAudioBlocks;
+		unsigned int 		m_FileLengthInAudioBlocks;
 		unsigned int 		m_LoopLengthInAudioBlocks;
 
 		unsigned int 		m_B12BufferSize;
