@@ -461,10 +461,7 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 
 			break;
 		case UiEventType::AUDIO_TRACK_FINISHED:
-			if ( static_cast<MNEMONIC_ROW>(event.getCellY()) == MNEMONIC_ROW::AUDIO_ONESHOTS )
-			{
-				this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
-			}
+			this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
 
 			break;
 		default:

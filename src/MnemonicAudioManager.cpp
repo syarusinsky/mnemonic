@@ -246,11 +246,23 @@ void MnemonicAudioManager::enterFileExplorer()
 
 void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cellY, bool play)
 {
+	const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
+
+	// if there is a track playing on one of these lanes, the other must not be playing any tracks
+	bool shouldStopOtherLane = false;
+	unsigned int stopLane = 0;
+	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+	{
+		shouldStopOtherLane = true;
+		const unsigned int audioLoops2Lane = static_cast<unsigned int>( MNEMONIC_ROW::AUDIO_LOOPS_2 );
+		const unsigned int audioOneshotsLane = static_cast<unsigned int>( MNEMONIC_ROW::AUDIO_ONESHOTS );
+		stopLane = ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 ) ? audioOneshotsLane : audioLoops2Lane;
+	}
+
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
 		if ( audioTrack.getCellX() == cellX && audioTrack.getCellY() == cellY )
 		{
-			const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
 			if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
 			{
 				audioTrack.setLoopable( play );
@@ -259,6 +271,29 @@ void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cel
 			{
 				( play ) ? audioTrack.play() : audioTrack.reset();
 			}
+		}
+		else if ( audioTrack.getCellY() == cellY )
+		{
+			// we should only have one track per lane playing at one time
+			if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
+			{
+				audioTrack.setLoopable( false );
+				IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
+									audioTrack.getCellX(), audioTrack.getCellY()) );
+			}
+			else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+			{
+				audioTrack.reset();
+				IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
+									audioTrack.getCellX(), audioTrack.getCellY()) );
+			}
+		}
+		else if ( shouldStopOtherLane && audioTrack.getCellY() == stopLane )
+		{
+			audioTrack.setLoopable( false );
+			audioTrack.reset();
+			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
+								audioTrack.getCellX(), audioTrack.getCellY()) );
 		}
 	}
 }

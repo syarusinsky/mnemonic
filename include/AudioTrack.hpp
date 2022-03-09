@@ -38,6 +38,7 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		void play();
 		void reset();
 
+		bool isPlaying() { return m_FatEntry.getFileTransferInProgressFlagRef(); }
 		bool justFinished() { const bool justFinished = m_JustFinished; m_JustFinished = false; return justFinished; }
 
 		void setLoopable (const bool isLoopable);
