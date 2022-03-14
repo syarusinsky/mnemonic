@@ -34,7 +34,8 @@ enum class CELL_STATE
 	INACTIVE,
 	LOADING,
 	NOT_PLAYING,
-	PLAYING
+	PLAYING,
+	RECORDING
 };
 
 struct CellPos

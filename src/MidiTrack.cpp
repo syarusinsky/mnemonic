@@ -1,11 +1,17 @@
 #include "MidiTrack.hpp"
 
-MidiTrack::MidiTrack (const MidiTrackEvent* const midiTrackEvents, const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd,
-			IAllocator& allocator) :
+MidiTrack::MidiTrack (unsigned int cellX, unsigned int cellY, const MidiTrackEvent* const midiTrackEvents,
+			const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd, IAllocator& allocator) :
+	m_CellX( cellX ),
+	m_CellY( cellY ),
 	m_MidiTrackEvents( SharedData<MidiTrackEvent>::MakeSharedData(lengthInMidiTrackEvents, &allocator) ),
 	m_LengthInMidiTrackEvents( lengthInMidiTrackEvents ),
 	m_LoopEndInBlocks( loopEnd ),
-	m_MidiTrackEventsIndex( 0 )
+	m_MidiTrackEventsIndex( 0 ),
+	m_WaitToPlay( false ),
+	m_WaitToStop( false ),
+	m_IsPlaying( false ),
+	m_JustFinished( false )
 {
 	// copy midi events from temp buffer
 	for ( unsigned int midiEventNum = 0; midiEventNum < lengthInMidiTrackEvents; midiEventNum++ )
@@ -16,6 +22,20 @@ MidiTrack::MidiTrack (const MidiTrackEvent* const midiTrackEvents, const unsigne
 
 MidiTrack::~MidiTrack()
 {
+}
+
+void MidiTrack::waitForLoopStartOrEnd (const unsigned int timeCode)
+{
+	if ( m_WaitToPlay && timeCode % m_LoopEndInBlocks == 0 )
+	{
+		m_IsPlaying = true;
+		m_WaitToPlay = false;
+	}
+	else if ( m_WaitToStop && timeCode % m_LoopEndInBlocks == 0 )
+	{
+		m_IsPlaying = false;
+		m_WaitToStop = false;
+	}
 }
 
 void MidiTrack::addMidiEventsAtTimeCode( const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector )
@@ -41,4 +61,34 @@ void MidiTrack::addMidiEventsAtTimeCode( const unsigned int timeCode, std::vecto
 	{
 		m_MidiTrackEventsIndex = 0;
 	}
+}
+
+void MidiTrack::play (bool immediately)
+{
+	if ( immediately )
+	{
+		m_IsPlaying = true;
+		m_WaitToPlay = false;
+	}
+	else
+	{
+		m_WaitToPlay = true;
+	}
+	m_WaitToStop = false;
+	m_JustFinished = false;
+}
+
+void MidiTrack::stop (bool immediately)
+{
+	if ( immediately )
+	{
+		m_IsPlaying = false;
+		m_WaitToStop = false;
+	}
+	else
+	{
+		m_WaitToStop = true;
+	}
+	m_WaitToPlay = false;
+	m_JustFinished = true;
 }

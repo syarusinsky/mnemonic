@@ -20,7 +20,9 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 				m_AxiSramAllocator.allocatePrimativeArray<uint8_t>(MNEMONIC_MAX_MIDI_TRACK_EVENTS * sizeof(MidiTrackEvent))) ),
 	m_TempMidiTrackEventsIndex( 0 ),
 	m_TempMidiTrackEventsNumEvents( 1 ), // 1 to avoid arithmetic exception when performing modulo
-	m_TempMidiTrackEventsLoopEnd( 1 )
+	m_TempMidiTrackEventsLoopEnd( 1 ),
+	m_TempMidiTrackCellX( 0 ),
+	m_TempMidiTrackCellY( 0 )
 {
 }
 
@@ -43,6 +45,22 @@ void MnemonicAudioManager::publishUiEvents()
 		{
 			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
 								audioTrack.getCellX(), audioTrack.getCellY()) );
+		}
+	}
+
+	if ( m_RecordingMidiState == MidiRecordingState::JUST_FINISHED_RECORDING )
+	{
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_RECORDING_FINISHED, nullptr, 0, 0,
+							m_TempMidiTrackCellX, m_TempMidiTrackCellY) );
+		m_RecordingMidiState = MidiRecordingState::NOT_RECORDING;
+	}
+
+	for ( MidiTrack& midiTrack : m_MidiTracks )
+	{
+		if ( midiTrack.justFinished() )
+		{
+			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_FINISHED, nullptr, 0, 0,
+								midiTrack.getCellX(), midiTrack.getCellY()) );
 		}
 	}
 }
@@ -73,10 +91,19 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		m_TempMidiTrackEventsNumEvents = 1; // 1 to avoid arithmetic exception when performing modulo
 		m_TempMidiTrackEventsIndex = 0;
 		m_TempMidiTrackEventsLoopEnd = 1;
+
+		// stop any midi tracks in this row
+		for ( MidiTrack& midiTrack : m_MidiTracks )
+		{
+			if ( m_TempMidiTrackCellY == midiTrack.getCellY() )
+			{
+				midiTrack.stop( true );
+			}
+		}
 	}
 	else if ( m_RecordingMidiState == MidiRecordingState::RECORDING && m_MasterClockCount == 0 )
 	{
-		this->endRecordingMidiTrack();
+		this->endRecordingMidiTrack( m_TempMidiTrackCellX, m_TempMidiTrackCellY );
 	}
 
 	// update master clock count state
@@ -96,7 +123,12 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 	// fill midi event queue with midi events at this time code
 	for ( MidiTrack& midiTrack : m_MidiTracks )
 	{
-		midiTrack.addMidiEventsAtTimeCode( m_MasterClockCount, m_MidiEventsToSend );
+		midiTrack.waitForLoopStartOrEnd( m_MasterClockCount );
+
+		if ( midiTrack.isPlaying() )
+		{
+			midiTrack.addMidiEventsAtTimeCode( m_MasterClockCount, m_MidiEventsToSend );
+		}
 	}
 
 	// TODO add limiter stage
@@ -120,17 +152,14 @@ void MnemonicAudioManager::onMidiEvent (const MidiEvent& midiEvent)
 	}
 }
 
-void MnemonicAudioManager::startRecordingMidiTrack()
+void MnemonicAudioManager::startRecordingMidiTrack (unsigned int cellX, unsigned int cellY)
 {
+	m_TempMidiTrackCellX = cellX;
+	m_TempMidiTrackCellY = cellY;
 	m_RecordingMidiState = MidiRecordingState::WAITING_TO_RECORD;
-	// TODO we will need a separate function to delete midi tracks when we have cells to start and stop midi recordings
-	if ( ! m_MidiTracks.empty() )
-	{
-		m_MidiTracks.pop_back();
-	}
 }
 
-void MnemonicAudioManager::endRecordingMidiTrack()
+void MnemonicAudioManager::endRecordingMidiTrack (unsigned int cellX, unsigned int cellY)
 {
 	if ( m_RecordingMidiState == MidiRecordingState::RECORDING )
 	{
@@ -155,9 +184,13 @@ void MnemonicAudioManager::endRecordingMidiTrack()
 		if ( m_TempMidiTrackEventsNumEvents > 1 )
 		{
 
-			MidiTrack midiTrack( m_TempMidiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd,
+			MidiTrack midiTrack( cellX, cellY, m_TempMidiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd,
 						m_AxiSramAllocator );
 			m_MidiTracks.push_back( midiTrack );
+
+			m_MidiTracks.back().play( true );
+
+			m_RecordingMidiState = MidiRecordingState::JUST_FINISHED_RECORDING;
 		}
 	}
 }
@@ -183,16 +216,16 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			this->unloadFile( cellX, cellY );
 
 			break;
-		case PARAM_CHANNEL::PLAY_OR_STOP_AUDIO:
+		case PARAM_CHANNEL::PLAY_OR_STOP_TRACK:
 			this->playOrStopTrack( cellX, cellY, static_cast<bool>(val) );
 
 			break;
 		case PARAM_CHANNEL::START_MIDI_RECORDING:
-			this->startRecordingMidiTrack();
+			this->startRecordingMidiTrack( cellX, cellY );
 
 			break;
 		case PARAM_CHANNEL::END_MIDI_RECORDING:
-			this->endRecordingMidiTrack();
+			this->endRecordingMidiTrack( cellX, cellY);
 
 			break;
 		default:
@@ -248,52 +281,75 @@ void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cel
 {
 	const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
 
-	// if there is a track playing on one of these lanes, the other must not be playing any tracks
-	bool shouldStopOtherLane = false;
-	unsigned int stopLane = 0;
-	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 	{
-		shouldStopOtherLane = true;
-		const unsigned int audioLoops2Lane = static_cast<unsigned int>( MNEMONIC_ROW::AUDIO_LOOPS_2 );
-		const unsigned int audioOneshotsLane = static_cast<unsigned int>( MNEMONIC_ROW::AUDIO_ONESHOTS );
-		stopLane = ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 ) ? audioOneshotsLane : audioLoops2Lane;
-	}
-
-	for ( AudioTrack& audioTrack : m_AudioTracks )
-	{
-		if ( audioTrack.getCellX() == cellX && audioTrack.getCellY() == cellY )
+		// if there is a track playing on one of these lanes, the other must not be playing any tracks
+		bool shouldStopOtherLane = false;
+		unsigned int stopLane = 0;
+		if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 		{
-			if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
-			{
-				audioTrack.setLoopable( play );
-			}
-			else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
-			{
-				( play ) ? audioTrack.play() : audioTrack.reset();
-			}
+			shouldStopOtherLane = true;
+			const unsigned int audioLoops2Lane = static_cast<unsigned int>( MNEMONIC_ROW::AUDIO_LOOPS_2 );
+			const unsigned int audioOneshotsLane = static_cast<unsigned int>( MNEMONIC_ROW::AUDIO_ONESHOTS );
+			stopLane = ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 ) ? audioOneshotsLane : audioLoops2Lane;
 		}
-		else if ( audioTrack.getCellY() == cellY )
+
+		for ( AudioTrack& audioTrack : m_AudioTracks )
 		{
-			// we should only have one track per lane playing at one time
-			if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
+			if ( audioTrack.getCellX() == cellX && audioTrack.getCellY() == cellY )
+			{
+				if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
+				{
+					audioTrack.setLoopable( play );
+				}
+				else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+				{
+					( play ) ? audioTrack.play() : audioTrack.reset();
+				}
+			}
+			else if ( audioTrack.getCellY() == cellY )
+			{
+				// we should only have one track per lane playing at one time
+				if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
+				{
+					audioTrack.setLoopable( false );
+					IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
+										audioTrack.getCellX(), audioTrack.getCellY()) );
+				}
+				else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+				{
+					audioTrack.reset();
+					IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
+										audioTrack.getCellX(), audioTrack.getCellY()) );
+				}
+			}
+			else if ( shouldStopOtherLane && audioTrack.getCellY() == stopLane )
 			{
 				audioTrack.setLoopable( false );
-				IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
-									audioTrack.getCellX(), audioTrack.getCellY()) );
-			}
-			else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
-			{
 				audioTrack.reset();
 				IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
 									audioTrack.getCellX(), audioTrack.getCellY()) );
 			}
 		}
-		else if ( shouldStopOtherLane && audioTrack.getCellY() == stopLane )
+	}
+	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+			|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+	{
+		for ( MidiTrack& midiTrack : m_MidiTracks )
 		{
-			audioTrack.setLoopable( false );
-			audioTrack.reset();
-			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
-								audioTrack.getCellX(), audioTrack.getCellY()) );
+			if ( play && midiTrack.getCellX() == cellX && midiTrack.getCellY() == cellY )
+			{
+				midiTrack.play();
+			}
+			else if ( ! play && midiTrack.getCellX() == cellX && midiTrack.getCellY() == cellY )
+			{
+				midiTrack.stop();
+			}
+			else if ( midiTrack.getCellY() == cellY )
+			{
+				// only one midi track per channel should play at once
+				midiTrack.stop();
+			}
 		}
 	}
 }

@@ -21,18 +21,39 @@ struct MidiTrackEvent
 class MidiTrack
 {
 	public:
-		MidiTrack (const MidiTrackEvent* const midiTrackEvents, const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd,
-				IAllocator& allocator);
+		MidiTrack (unsigned int cellX, unsigned int cellY, const MidiTrackEvent* const midiTrackEvents,
+				const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd, IAllocator& allocator);
 		~MidiTrack();
 
-		void addMidiEventsAtTimeCode( const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector );
+		unsigned int getCellX() const { return m_CellX; }
+		unsigned int getCellY() const { return m_CellY; }
+
+		void play (bool immediately = false); // only start when last loop is complete, unless immediatly = true
+		void stop (bool immediately = false);
+
+		bool isPlaying() const { return m_IsPlaying; }
+
+		bool justFinished() { const bool justFinished = m_JustFinished; m_JustFinished = false; return justFinished; }
+
+		void waitForLoopStartOrEnd (const unsigned int timeCode);
+		void addMidiEventsAtTimeCode (const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector);
 
 	private:
+		unsigned int 			m_CellX;
+		unsigned int 			m_CellY;
+
 		SharedData<MidiTrackEvent>	m_MidiTrackEvents;
-		const unsigned int 		m_LengthInMidiTrackEvents;
-		const unsigned int 		m_LoopEndInBlocks;
+		unsigned int 			m_LengthInMidiTrackEvents;
+		unsigned int 			m_LoopEndInBlocks;
 
 		unsigned int 			m_MidiTrackEventsIndex;
+
+		bool 				m_WaitToPlay; // both to ensure stop and start at the beginning of the loops
+		bool 				m_WaitToStop;
+
+		bool 				m_IsPlaying;
+
+		bool 				m_JustFinished;
 };
 
 #endif // MIDITRACK_HPP

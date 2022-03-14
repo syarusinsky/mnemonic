@@ -22,7 +22,8 @@ enum class MidiRecordingState : unsigned int
 {
 	NOT_RECORDING = 0,
 	WAITING_TO_RECORD = 1,
-	RECORDING = 2
+	RECORDING = 2,
+	JUST_FINISHED_RECORDING = 3
 };
 
 class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnemonicParameterEventListener, public IMidiEventListener
@@ -64,14 +65,16 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		unsigned int 			m_TempMidiTrackEventsIndex;
 		unsigned int 			m_TempMidiTrackEventsNumEvents;
 		unsigned int 			m_TempMidiTrackEventsLoopEnd;
+		unsigned int 			m_TempMidiTrackCellX;
+		unsigned int 			m_TempMidiTrackCellY;
 
 		void playOrStopTrack (unsigned int cellX, unsigned int cellY, bool play);
 
 		void loadFile (unsigned int cellX, unsigned int cellY, unsigned int index);
 		void unloadFile (unsigned int cellX, unsigned int cellY);
 
-		void startRecordingMidiTrack(); // TODO probably need to assign a 'cell'
-		void endRecordingMidiTrack();
+		void startRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
+		void endRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
 
 		void enterFileExplorer();
 

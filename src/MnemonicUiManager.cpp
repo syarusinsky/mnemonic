@@ -362,6 +362,7 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 {
 	if ( keyReleased && m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
+		CELL_STATE cellState = this->getCellState( keyX, keyY );
 		const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( keyY );
 
 		if ( row == MNEMONIC_ROW::TRANSPORT )
@@ -370,11 +371,9 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 		}
 		else if ( (row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS) )
 		{
-			CELL_STATE cellState = this->getCellState( keyX, keyY );
-
-			// if inactive, enter file explorer to load a file
 			if ( cellState == CELL_STATE::INACTIVE )
 			{
+				// if inactive, enter file explorer to load a file
 				this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
 				m_CachedCell.x = keyX;
 				m_CachedCell.y = keyY;
@@ -396,7 +395,7 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
 					IMnemonicParameterEventListener::PublishEvent(
 							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
-								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_AUDIO)) );
+								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 				}
 			}
 			else if ( cellState == CELL_STATE::PLAYING )
@@ -404,7 +403,7 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
-							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_AUDIO)) );
+							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 			}
 		}
 		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS
@@ -412,6 +411,48 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
+			if ( cellState == CELL_STATE::INACTIVE )
+			{
+				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+				{
+					// TODO load a midi file
+				}
+				else
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::RECORDING );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, 0,
+								static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
+				}
+			}
+			else if ( cellState == CELL_STATE::RECORDING )
+			{
+				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, 0,
+							static_cast<unsigned int>(PARAM_CHANNEL::END_MIDI_RECORDING)) );
+			}
+			else if ( cellState == CELL_STATE::NOT_PLAYING )
+			{
+				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+				{
+					// TODO unload a midi file
+				}
+				else
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
+				}
+			}
+			else if ( cellState == CELL_STATE::PLAYING )
+			{
+				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
+							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
+			}
 		}
 	}
 }
@@ -461,6 +502,14 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 
 			break;
 		case UiEventType::AUDIO_TRACK_FINISHED:
+			this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
+
+			break;
+		case UiEventType::MIDI_RECORDING_FINISHED:
+			this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::PLAYING );
+
+			break;
+		case UiEventType::MIDI_TRACK_FINISHED:
 			this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
 
 			break;
@@ -586,6 +635,14 @@ void MnemonicUiManager::setCellStateAndColor (unsigned int cellX, unsigned int c
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
 			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_PLAYING );
+		}
+	}
+	else if ( state == CELL_STATE::RECORDING )
+	{
+		if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+		{
+			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_RECORDING );
 		}
 	}
 }
