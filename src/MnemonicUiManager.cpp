@@ -3,6 +3,7 @@
 #include "Graphics.hpp"
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
+#include "Font.hpp"
 
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
@@ -14,8 +15,10 @@ void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInter
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format, NeotrellisInterface* const neotrellis) :
 	Surface( width, height, format ),
 	m_Neotrellis( neotrellis ),
+	m_Font( nullptr ),
 	m_AudioFileEntries(),
 	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
+	m_StringEditModel(),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
 	m_CachedCell(),
 	m_CellStates{},
@@ -43,6 +46,8 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_Effect1BtnState( BUTTON_STATE::FLOATING ),
 	m_Effect2BtnState( BUTTON_STATE::FLOATING )
 {
+	m_StringEditModel.setString( "FOURFOUR" );
+
 	m_Neotrellis->begin( this );
 
 	for ( unsigned int row = 0; row < m_Neotrellis->getNumRows(); row++ )
@@ -62,6 +67,7 @@ MnemonicUiManager::~MnemonicUiManager()
 void MnemonicUiManager::setFont (Font* font)
 {
 	m_Graphics->setFont( font );
+	m_Font = font;
 }
 
 void MnemonicUiManager::draw()
@@ -81,6 +87,33 @@ void MnemonicUiManager::draw()
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
 		this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
+	{
+		m_Graphics->setColor( false );
+		m_Graphics->fill();
+
+		m_Graphics->setColor( true );
+		const char* string = m_StringEditModel.getString();
+		m_Graphics->drawText( 0.3f, 0.4f, string, 1.0f );
+		const unsigned int cursorPos = m_StringEditModel.getCursorPos();
+		const float charSpan = static_cast<float>( m_Font->getCharacterWidth() ) / this->getFrameBuffer()->getWidth();
+		const float startX = 0.3f + ( charSpan * cursorPos );
+
+		if ( m_StringEditModel.getEditMode() ) // in edit mode
+		{
+			m_Graphics->drawBoxFilled( startX, 0.37f, startX + charSpan, 0.5f );
+			char charBeingEdited[] = { string[cursorPos], '\0' };
+			m_Graphics->setColor( false );
+			m_Graphics->drawText( startX, 0.4f, charBeingEdited, 1.0f );
+		}
+		else // in hover mode
+		{
+			m_Graphics->drawLine( startX, 0.5f, startX + charSpan, 0.5f );
+		}
+
+		IMnemonicLCDRefreshEventListener::PublishEvent(
+				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
 	}
 	else
 	{
@@ -320,6 +353,11 @@ void MnemonicUiManager::handleEffect1SinglePress()
 		m_AudioFileMenuModel.reverseCursor();
 		this->draw();
 	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
+	{
+		m_StringEditModel.cursorPrev();
+		this->draw();
+	}
 }
 
 void MnemonicUiManager::handleEffect2SinglePress()
@@ -331,6 +369,11 @@ void MnemonicUiManager::handleEffect2SinglePress()
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
 		m_AudioFileMenuModel.advanceCursor();
+		this->draw();
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
+	{
+		m_StringEditModel.cursorNext();
 		this->draw();
 	}
 }
@@ -354,6 +397,11 @@ void MnemonicUiManager::handleDoubleButtonPress()
 
 		// return to status menu
 		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+		this->draw();
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
+	{
+		m_StringEditModel.setEditMode( ! m_StringEditModel.getEditMode() );
 		this->draw();
 	}
 }
@@ -436,7 +484,10 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 			{
 				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
 				{
-					// TODO unload a midi file
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, 0,
+								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
 				}
 				else
 				{

@@ -20,13 +20,15 @@
 #include "IPotEventListener.hpp"
 #include "IButtonEventListener.hpp"
 #include "ScrollableMenuModel.hpp"
+#include "StringEditModel.hpp"
 #include "Neotrellis.hpp"
 
 enum class MNEMONIC_MENUS
 {
 	ERROR_MESSAGE,
 	STATUS,
-	FILE_EXPLORER
+	FILE_EXPLORER,
+	STRING_EDIT
 };
 
 enum class CELL_STATE
@@ -69,11 +71,16 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 	private:
 		NeotrellisInterface* const 		m_Neotrellis;
 
+		Font* 					m_Font;
+
 		// to store the directory entries for printing
 		std::vector<UiFileExplorerEntry> 	m_AudioFileEntries;
 
 		// menu model for audio file explorer
 		ScrollableMenuModel 			m_AudioFileMenuModel;
+
+		// model for editing of a string
+		StringEditModel 			m_StringEditModel;
 
 		// the current menu the ui is on
 		MNEMONIC_MENUS 				m_CurrentMenu;

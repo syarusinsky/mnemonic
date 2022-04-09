@@ -235,6 +235,7 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 
 void MnemonicAudioManager::enterFileExplorer()
 {
+	// TODO this is for b12 files, but need to filter similarly for midi files when entering file explorer for midi
 	static uint8_t* primArrayPtr = nullptr;
 	static unsigned int numEntries = 0;
 
@@ -429,6 +430,21 @@ void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
 
 				break;
 			}
+		}
+	}
+	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+			|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+	{
+		for ( std::vector<MidiTrack>::iterator trackInVecIt = m_MidiTracks.begin(); trackInVecIt != m_MidiTracks.end(); trackInVecIt++ )
+		{
+			MidiTrack& midiTrack = *trackInVecIt;
+
+			if ( midiTrack.getCellX() == cellX && midiTrack.getCellY() == cellY )
+			{
+				m_MidiTracks.erase( trackInVecIt );
+			}
+
+			break;
 		}
 	}
 }

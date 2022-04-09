@@ -93,6 +93,7 @@ OBJECTS_APP := \
   $(JUCE_OBJDIR)/IMnemonicParameterEventListener_e027daab.o \
   $(JUCE_OBJDIR)/IMnemonicUiEventListener_db0c73de.o \
   $(JUCE_OBJDIR)/IMnemonicLCDRefreshEventListener_d5c03264.o \
+  $(JUCE_OBJDIR)/StringEditModel_485d2f69.o \
   $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o \
   $(JUCE_OBJDIR)/MidiTrack_9ff64265.o \
   $(JUCE_OBJDIR)/FakeSynth_2d5bf222.o \
@@ -254,6 +255,11 @@ $(JUCE_OBJDIR)/IMnemonicUiEventListener_db0c73de.o: ../../../src/IMnemonicUiEven
 $(JUCE_OBJDIR)/IMnemonicLCDRefreshEventListener_d5c03264.o: ../../../src/IMnemonicLCDRefreshEventListener.cpp
 	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
 	@echo "Compiling IMnemonicLCDRefreshEventListener.cpp"
+	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
+
+$(JUCE_OBJDIR)/StringEditModel_485d2f69.o: ../../../src/StringEditModel.cpp
+	-$(V_AT)mkdir -p $(JUCE_OBJDIR)
+	@echo "Compiling StringEditModel.cpp"
 	$(V_AT)$(CXX) $(JUCE_CXXFLAGS) $(JUCE_CPPFLAGS_APP) $(JUCE_CFLAGS_APP) -o "$@" -c "$<"
 
 $(JUCE_OBJDIR)/AudioTrack_cc0ee204.o: ../../../src/AudioTrack.cpp
