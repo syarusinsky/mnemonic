@@ -46,8 +46,6 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_Effect1BtnState( BUTTON_STATE::FLOATING ),
 	m_Effect2BtnState( BUTTON_STATE::FLOATING )
 {
-	m_StringEditModel.setString( "FOURFOUR" );
-
 	m_Neotrellis->begin( this );
 
 	for ( unsigned int row = 0; row < m_Neotrellis->getNumRows(); row++ )
@@ -489,6 +487,15 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 							MnemonicParameterEvent(keyX, keyY, 0,
 								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
 				}
+				else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
+				{
+					// move to string edit menu
+					m_StringEditModel.setString( "        " );
+					m_CurrentMenu = MNEMONIC_MENUS::STRING_EDIT;
+					m_CachedCell.x = keyX;
+					m_CachedCell.y = keyY;
+					this->draw();
+				}
 				else
 				{
 					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
@@ -503,6 +510,26 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
 							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
+			}
+		}
+	}
+	else if ( keyReleased && m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
+	{
+		const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( m_CachedCell.y );
+
+		if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+		{
+			if ( keyX == m_CachedCell.x && keyY == m_CachedCell.y )
+			{
+				// send save midi file event
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, 0,
+							static_cast<unsigned int>(PARAM_CHANNEL::SAVE_MIDI_RECORDING),
+								m_StringEditModel.getString()) );
+
+				m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+				this->draw();
 			}
 		}
 	}

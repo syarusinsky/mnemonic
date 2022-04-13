@@ -48,6 +48,7 @@ enum class PARAM_CHANNEL : unsigned int
 	PLAY_OR_STOP_TRACK,
 	START_MIDI_RECORDING,
 	END_MIDI_RECORDING,
+	SAVE_MIDI_RECORDING
 };
 
 enum class POT_CHANNEL : unsigned int

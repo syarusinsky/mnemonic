@@ -5,6 +5,9 @@
 #include <string.h>
 #include "B12Compression.hpp"
 
+// TODO remove after finishing saving
+#include <iostream>
+
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
 	m_FileManager( sdCard, &m_AxiSramAllocator ),
@@ -195,6 +198,74 @@ void MnemonicAudioManager::endRecordingMidiTrack (unsigned int cellX, unsigned i
 	}
 }
 
+void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int cellY, const char* nameWithoutExt)
+{
+	for ( MidiTrack& midiTrack : m_MidiTracks )
+	{
+		if ( cellX == midiTrack.getCellX() && cellY == midiTrack.getCellY() )
+		{
+			std::string filename( nameWithoutExt );
+			// remove whitespace
+			filename.erase( remove_if(filename.begin(), filename.end(), isspace), filename.end() );
+
+			Fat16Entry entry( filename, "smf" );
+
+			// check for a duplicate and delete if necessary
+			unsigned int entryNum = 0;
+			std::vector<Fat16Entry*>& dirEntries = m_FileManager.getCurrentDirectoryEntries();
+			for ( const Fat16Entry* const entryPtr : dirEntries )
+			{
+				const char* entryPtrFilename = entryPtr->getFilenameDisplay();
+				const char* newEntryFilename = entry.getFilenameDisplay();
+				if ( strcmp(entryPtrFilename, newEntryFilename) == 0 )
+				{
+					m_FileManager.deleteEntry( entryNum );
+					std::cout << "DELETED DUPLICATE ENTRY" << std::endl;
+
+					break;
+				}
+
+				entryNum++;
+			}
+
+			if ( m_FileManager.createEntry(entry) )
+			{
+				// get data necessary to reconstruct midi track
+				SharedData<MidiTrackEvent> midiData = midiTrack.getData();
+				unsigned int lenMd = midiTrack.getLengthInMidiTrackEvents();
+				unsigned int lenBk = midiTrack.getLoopEndInBlocks();
+
+				// write 'header' data first
+				unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
+				SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sectorSizeInBytes );
+				data[ 0] = cellX; data[ 1] = cellX >> 1; data[ 2] = cellX >> 2; data[ 3] = cellX >> 3;
+				data[ 4] = cellY; data[ 5] = cellY >> 1; data[ 6] = cellY >> 2; data[ 7] = cellY >> 3;
+				data[ 8] = lenMd; data[ 9] = lenMd >> 1; data[10] = lenMd >> 2; data[11] = lenMd >> 3;
+				data[12] = lenBk; data[13] = lenBk >> 1; data[14] = lenBk >> 2; data[15] = lenBk >> 3;
+				if ( ! m_FileManager.writeToEntry(entry, data) ) break;
+
+				/* TODO this will be necessary to convert the header data back when loading
+				cellX = data[ 0] | data[ 1] << 1 | data[ 2] << 2 | data[ 3] << 3;
+				cellY = data[ 4] | data[ 5] << 1 | data[ 6] << 2 | data[ 7] << 3;
+				lenMd = data[ 8] | data[ 9] << 1 | data[10] << 2 | data[11] << 3;
+				lenBk = data[12] | data[13] << 1 | data[14] << 2 | data[15] << 3;
+				*/
+
+				// write midi event data
+				unsigned int bytesLeftToWriteInBlock = sectorSizeInBytes;
+				for ( unsigned int midiTrackEventNum = 0; midiTrackEventNum < midiData.getSize(); midiTrackEventNum++ )
+				{
+				}
+			}
+
+			break;
+		}
+	}
+
+	// send failed message
+	std::cout << "FAILED" << std::endl;
+}
+
 void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent)
 {
 	PARAM_CHANNEL channel = static_cast<PARAM_CHANNEL>( paramEvent.getChannel() );
@@ -226,6 +297,10 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			break;
 		case PARAM_CHANNEL::END_MIDI_RECORDING:
 			this->endRecordingMidiTrack( cellX, cellY);
+
+			break;
+		case PARAM_CHANNEL::SAVE_MIDI_RECORDING:
+			this->saveMidiRecording( cellX, cellY, paramEvent.getString() );
 
 			break;
 		default:

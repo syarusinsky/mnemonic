@@ -75,6 +75,7 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		void startRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
 		void endRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
+		void saveMidiRecording (unsigned int cellX, unsigned int cellY, const char* nameWithoutExt);
 
 		void enterFileExplorer();
 

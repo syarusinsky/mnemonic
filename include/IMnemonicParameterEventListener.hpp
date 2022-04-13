@@ -12,7 +12,8 @@
 class MnemonicParameterEvent : public IEvent
 {
 	public:
-		MnemonicParameterEvent (unsigned int cellX, unsigned int cellY, unsigned int value, unsigned int channel);
+		MnemonicParameterEvent (unsigned int cellX, unsigned int cellY, unsigned int value, unsigned int channel,
+					const char* string = nullptr);
 		~MnemonicParameterEvent() override;
 
 		unsigned int getCellX() const;
@@ -20,10 +21,14 @@ class MnemonicParameterEvent : public IEvent
 
 		unsigned int getValue() const;
 
+		const char* getString() const;
+
 	private:
 		unsigned int 	m_CellX;
 		unsigned int 	m_CellY;
 		unsigned int  	m_Value;
+
+		const char* 	m_String;
 };
 
 class IMnemonicParameterEventListener : public IEventListener

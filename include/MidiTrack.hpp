@@ -28,6 +28,11 @@ class MidiTrack
 		unsigned int getCellX() const { return m_CellX; }
 		unsigned int getCellY() const { return m_CellY; }
 
+		SharedData<MidiTrackEvent> getData() { return m_MidiTrackEvents; }
+
+		unsigned int getLengthInMidiTrackEvents() { return m_LengthInMidiTrackEvents; }
+		unsigned int getLoopEndInBlocks() { return m_LoopEndInBlocks; }
+
 		void play (bool immediately = false); // only start when last loop is complete, unless immediatly = true
 		void stop (bool immediately = false);
 
