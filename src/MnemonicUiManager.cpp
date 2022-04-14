@@ -113,6 +113,17 @@ void MnemonicUiManager::draw()
 		IMnemonicLCDRefreshEventListener::PublishEvent(
 				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
 	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::MIDI_RECORDING_FAILED )
+	{
+		m_Graphics->setColor( false );
+		m_Graphics->fill();
+
+		m_Graphics->setColor( true );
+		m_Graphics->drawText( 0.05f, 0.4f, "RECORDING FAILED", 1.0f );
+
+		IMnemonicLCDRefreshEventListener::PublishEvent(
+				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+	}
 	else
 	{
 		m_Graphics->setColor( true );
@@ -527,9 +538,6 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 						MnemonicParameterEvent(keyX, keyY, 0,
 							static_cast<unsigned int>(PARAM_CHANNEL::SAVE_MIDI_RECORDING),
 								m_StringEditModel.getString()) );
-
-				m_CurrentMenu = MNEMONIC_MENUS::STATUS;
-				this->draw();
 			}
 		}
 	}
@@ -589,6 +597,19 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			break;
 		case UiEventType::MIDI_TRACK_FINISHED:
 			this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
+
+			break;
+		case UiEventType::MIDI_TRACK_RECORDING_STATUS:
+			if ( event.getChannel() == static_cast<unsigned int>(false) )
+			{
+				m_CurrentMenu = MNEMONIC_MENUS::MIDI_RECORDING_FAILED;
+			}
+			else if ( event.getChannel() == static_cast<unsigned int>(true) )
+			{
+				m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+			}
+
+			this->draw();
 
 			break;
 		default:

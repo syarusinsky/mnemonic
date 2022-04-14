@@ -5,9 +5,6 @@
 #include <string.h>
 #include "B12Compression.hpp"
 
-// TODO remove after finishing saving
-#include <iostream>
-
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
 	m_FileManager( sdCard, &m_AxiSramAllocator ),
@@ -220,7 +217,6 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 				if ( strcmp(entryPtrFilename, newEntryFilename) == 0 )
 				{
 					m_FileManager.deleteEntry( entryNum );
-					std::cout << "DELETED DUPLICATE ENTRY" << std::endl;
 
 					break;
 				}
@@ -242,7 +238,7 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 				data[ 4] = cellY; data[ 5] = cellY >> 1; data[ 6] = cellY >> 2; data[ 7] = cellY >> 3;
 				data[ 8] = lenMd; data[ 9] = lenMd >> 1; data[10] = lenMd >> 2; data[11] = lenMd >> 3;
 				data[12] = lenBk; data[13] = lenBk >> 1; data[14] = lenBk >> 2; data[15] = lenBk >> 3;
-				if ( ! m_FileManager.writeToEntry(entry, data) ) break;
+				if ( ! m_FileManager.writeToEntry(entry, data) ) goto fail;
 
 				/* TODO this will be necessary to convert the header data back when loading
 				cellX = data[ 0] | data[ 1] << 1 | data[ 2] << 2 | data[ 3] << 3;
@@ -252,18 +248,49 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 				*/
 
 				// write midi event data
-				unsigned int bytesLeftToWriteInBlock = sectorSizeInBytes;
+				unsigned int bytesWrittenToBlock = 0;
 				for ( unsigned int midiTrackEventNum = 0; midiTrackEventNum < midiData.getSize(); midiTrackEventNum++ )
 				{
+					uint8_t* bytes = reinterpret_cast<uint8_t*>( &midiData[midiTrackEventNum] );
+					for ( unsigned int byteNum = 0; byteNum < sizeof(MidiTrackEvent); byteNum++ )
+					{
+						data[bytesWrittenToBlock] = bytes[byteNum];
+
+						bytesWrittenToBlock++;
+						if ( bytesWrittenToBlock == sectorSizeInBytes )
+						{
+							bytesWrittenToBlock = 0;
+
+							if ( ! m_FileManager.writeToEntry(entry, data) ) goto fail;
+						}
+					}
 				}
+
+				// flush data if necessary, or finalize entry if not
+				if ( bytesWrittenToBlock != 0 )
+				{
+					if ( ! m_FileManager.flushToEntry(entry, data) ) goto fail;
+				}
+				else
+				{
+					if ( ! m_FileManager.finalizeEntry(entry) ) goto fail;
+				}
+
+				// send success message
+				IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_RECORDING_STATUS, nullptr, 0,
+									static_cast<unsigned int>(true)) );
+
+				return;
 			}
 
-			break;
+			goto fail;
 		}
 	}
 
+fail:
 	// send failed message
-	std::cout << "FAILED" << std::endl;
+	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_RECORDING_STATUS, nullptr, 0,
+						static_cast<unsigned int>(false)) );
 }
 
 void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEvent& paramEvent)
