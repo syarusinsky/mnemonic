@@ -17,7 +17,11 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_Neotrellis( neotrellis ),
 	m_Font( nullptr ),
 	m_AudioFileEntries(),
+	m_MidiFileEntries(),
+	m_FileEntriesToUse( &m_AudioFileEntries ),
 	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
+	m_MidiFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
+	m_MenuModelToUse( &m_AudioFileMenuModel ),
 	m_StringEditModel(),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
 	m_CachedCell(),
@@ -84,7 +88,7 @@ void MnemonicUiManager::draw()
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
-		this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
+		this->drawScrollableMenu( *m_MenuModelToUse, nullptr, *this );
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
 	{
@@ -359,7 +363,7 @@ void MnemonicUiManager::handleEffect1SinglePress()
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
-		m_AudioFileMenuModel.reverseCursor();
+		m_MenuModelToUse->reverseCursor();
 		this->draw();
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
@@ -377,7 +381,7 @@ void MnemonicUiManager::handleEffect2SinglePress()
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
-		m_AudioFileMenuModel.advanceCursor();
+		m_MenuModelToUse->advanceCursor();
 		this->draw();
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
@@ -399,7 +403,7 @@ void MnemonicUiManager::handleDoubleButtonPress()
 		this->setCellStateAndColor( m_CachedCell.x, m_CachedCell.y, CELL_STATE::NOT_PLAYING );
 
 		// select file in file explorer
-		unsigned int index = m_AudioFileEntries[m_AudioFileMenuModel.getEntryIndex()].m_Index;
+		unsigned int index = (*m_FileEntriesToUse)[m_MenuModelToUse->getEntryIndex()].m_Index;
 		IMnemonicParameterEventListener::PublishEvent(
 				MnemonicParameterEvent(m_CachedCell.x, m_CachedCell.y, index,
 					static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
@@ -472,7 +476,29 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 			{
 				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
 				{
-					// TODO load a midi file
+					// first ensure no recording is taking place
+					bool noRecordingHappening = true;
+					for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
+					{
+						for ( unsigned int y = static_cast<unsigned int>(MNEMONIC_ROW::MIDI_CHAN_1_LOOPS);
+								y < MNEMONIC_NEOTRELLIS_ROWS; y++ )
+						{
+							if ( m_CellStates[x][y] == CELL_STATE::RECORDING )
+							{
+								noRecordingHappening = false;
+							}
+						}
+					}
+
+					if ( noRecordingHappening )
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
+						m_CachedCell.x = keyX;
+						m_CachedCell.y = keyY;
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, 0,
+									static_cast<unsigned int>(PARAM_CHANNEL::LOAD_MIDI_RECORDING)) );
+					}
 				}
 				else
 				{
@@ -560,19 +586,31 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			break;
 		case UiEventType::ENTER_FILE_EXPLORER:
 		{
+			if ( event.getChannel() == 0 ) // entering with b12 files
+			{
+				m_MenuModelToUse = &m_AudioFileMenuModel;
+				m_FileEntriesToUse = &m_AudioFileEntries;
+			}
+			else if ( event.getChannel() == 1 ) // entering with midi files
+			{
+				m_MenuModelToUse = &m_MidiFileMenuModel;
+				m_FileEntriesToUse = &m_MidiFileEntries;
+			}
+
+
 			// enter file explorer page and display list of options
-			if ( m_AudioFileEntries.empty() )
+			if ( m_FileEntriesToUse->empty() )
 			{
 				UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
 				for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
 				{
-					m_AudioFileEntries.push_back( entries[entryNum] );
-					m_AudioFileMenuModel.addEntry( m_AudioFileEntries[entryNum].m_FilenameDisplay );
+					m_FileEntriesToUse->push_back( entries[entryNum] );
+					m_MenuModelToUse->addEntry( (*m_FileEntriesToUse)[entryNum].m_FilenameDisplay );
 				}
 			}
 
-			// draw the menu with the audio files
-			this->drawScrollableMenu( m_AudioFileMenuModel, nullptr, *this );
+			// draw the menu with the files
+			this->drawScrollableMenu( *m_MenuModelToUse, nullptr, *this );
 
 			m_CurrentMenu = MNEMONIC_MENUS::FILE_EXPLORER;
 		}

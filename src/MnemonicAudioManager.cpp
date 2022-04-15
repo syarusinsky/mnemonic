@@ -4,6 +4,7 @@
 #include "AudioConstants.hpp"
 #include <string.h>
 #include "B12Compression.hpp"
+#include <ctype.h>
 
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
@@ -234,17 +235,13 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 				// write 'header' data first
 				unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
 				SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sectorSizeInBytes );
-				data[ 0] = cellX; data[ 1] = cellX >> 1; data[ 2] = cellX >> 2; data[ 3] = cellX >> 3;
-				data[ 4] = cellY; data[ 5] = cellY >> 1; data[ 6] = cellY >> 2; data[ 7] = cellY >> 3;
-				data[ 8] = lenMd; data[ 9] = lenMd >> 1; data[10] = lenMd >> 2; data[11] = lenMd >> 3;
-				data[12] = lenBk; data[13] = lenBk >> 1; data[14] = lenBk >> 2; data[15] = lenBk >> 3;
+				data[0] = lenMd; data[1] = lenMd >> 1; data[2] = lenMd >> 2; data[3] = lenMd >> 3;
+				data[4] = lenBk; data[5] = lenBk >> 1; data[6] = lenBk >> 2; data[7] = lenBk >> 3;
 				if ( ! m_FileManager.writeToEntry(entry, data) ) goto fail;
 
 				/* TODO this will be necessary to convert the header data back when loading
-				cellX = data[ 0] | data[ 1] << 1 | data[ 2] << 2 | data[ 3] << 3;
-				cellY = data[ 4] | data[ 5] << 1 | data[ 6] << 2 | data[ 7] << 3;
-				lenMd = data[ 8] | data[ 9] << 1 | data[10] << 2 | data[11] << 3;
-				lenBk = data[12] | data[13] << 1 | data[14] << 2 | data[15] << 3;
+				lenMd = data[0] | data[1] << 1 | data[2] << 2 | data[3] << 3;
+				lenBk = data[4] | data[5] << 1 | data[6] << 2 | data[7] << 3;
 				*/
 
 				// write midi event data
@@ -330,54 +327,89 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			this->saveMidiRecording( cellX, cellY, paramEvent.getString() );
 
 			break;
+		case PARAM_CHANNEL::LOAD_MIDI_RECORDING:
+			this->enterFileExplorer( true );
+
+			break;
 		default:
 			break;
 	}
 }
 
-void MnemonicAudioManager::enterFileExplorer()
+uint8_t* MnemonicAudioManager::enterFileExplorerHelper (const char* extension, unsigned int& numEntries)
+{
+	// look for extensions both upper and lower case
+	char extensionLowerCase[FAT16_EXTENSION_SIZE + 1];
+	char extensionUpperCase[FAT16_EXTENSION_SIZE + 1];
+	strcpy( extensionLowerCase, extension );
+	strcpy( extensionUpperCase, extension );
+	for ( unsigned int charNum = 0; charNum < FAT16_EXTENSION_SIZE + 1; charNum++ )
+	{
+		extensionLowerCase[charNum] = tolower( extensionLowerCase[charNum] );
+		extensionUpperCase[charNum] = toupper( extensionUpperCase[charNum] );
+	}
+
+	// get all b12 file entries and place them in vector
+	std::vector<UiFileExplorerEntry> uiEntryVec;
+	unsigned int index = 0;
+	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+	{
+		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), extensionLowerCase, FAT16_EXTENSION_SIZE) == 0
+			|| strncmp(entry->getExtensionRaw(), extensionUpperCase, FAT16_EXTENSION_SIZE) == 0) )
+		{
+			UiFileExplorerEntry uiEntry;
+			strcpy( uiEntry.m_FilenameDisplay, entry->getFilenameDisplay() );
+			uiEntry.m_Index = index;
+
+			uiEntryVec.push_back( uiEntry );
+		}
+
+		index++;
+	}
+
+	// allocate them in contiguous memory for ui use
+	uint8_t* primArrayPtr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( sizeof(UiFileExplorerEntry) * uiEntryVec.size() );
+
+	UiFileExplorerEntry* entryArrayPtr = reinterpret_cast<UiFileExplorerEntry*>( primArrayPtr );
+	index = 0;
+	for ( const UiFileExplorerEntry& entry : uiEntryVec )
+	{
+		entryArrayPtr[index] = entry;
+		index++;
+	}
+
+	numEntries = uiEntryVec.size();
+
+	return primArrayPtr;
+}
+
+void MnemonicAudioManager::enterFileExplorer (bool filterMidiFilesInstead)
 {
 	// TODO this is for b12 files, but need to filter similarly for midi files when entering file explorer for midi
-	static uint8_t* primArrayPtr = nullptr;
-	static unsigned int numEntries = 0;
+	static uint8_t* b12PrimArrayPtr = nullptr;
+	static unsigned int b12NumEntries = 0;
+	static uint8_t* midPrimArrayPtr = nullptr;
+	static unsigned int midNumEntries = 0;
 
 	// since the sd card is not hot-pluggable, we only need to get the list of entries once
-	if ( primArrayPtr == nullptr )
+	if ( ! filterMidiFilesInstead && b12PrimArrayPtr == nullptr )
 	{
-		// get all b12 file entries and place them in vector
-		std::vector<UiFileExplorerEntry> uiEntryVec;
-		unsigned int index = 0;
-		for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
-		{
-			if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
-				|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
-			{
-				UiFileExplorerEntry uiEntry;
-				strcpy( uiEntry.m_FilenameDisplay, entry->getFilenameDisplay() );
-				uiEntry.m_Index = index;
-
-				uiEntryVec.push_back( uiEntry );
-			}
-
-			index++;
-		}
-
-		// allocate them in contiguous memory for ui use
-		primArrayPtr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( sizeof(UiFileExplorerEntry) * uiEntryVec.size() );
-
-		UiFileExplorerEntry* entryArrayPtr = reinterpret_cast<UiFileExplorerEntry*>( primArrayPtr );
-		index = 0;
-		for ( const UiFileExplorerEntry& entry : uiEntryVec )
-		{
-			entryArrayPtr[index] = entry;
-			index++;
-		}
-
-		numEntries = uiEntryVec.size();
+		b12PrimArrayPtr = this->enterFileExplorerHelper( "b12", b12NumEntries );
+	}
+	else if ( filterMidiFilesInstead && midPrimArrayPtr == nullptr )
+	{
+		midPrimArrayPtr = this->enterFileExplorerHelper( "smf", midNumEntries );
 	}
 
 	// send the ui event with all this data
-	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, primArrayPtr, numEntries, 0) );
+	if ( ! filterMidiFilesInstead )
+	{
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, b12PrimArrayPtr, b12NumEntries, 0) );
+	}
+	else // filter midi files instead
+	{
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, midPrimArrayPtr, midNumEntries, 1) );
+	}
 }
 
 void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cellY, bool play)
@@ -495,6 +527,43 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 			{
 				if ( ! isOneshot ) trackInVec.setLoopLength( m_CurrentMaxLoopCount );
 			}
+		}
+	}
+	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+			|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+	{
+		const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
+
+		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "smf", FAT16_EXTENSION_SIZE) == 0
+			|| strncmp(entry->getExtensionRaw(), "SMF", FAT16_EXTENSION_SIZE) == 0) )
+		{
+			// TODO this is all jenk, need to actually implement this
+			/*
+			MidiTrack midiTrack( cellX, cellY, m_TempMidiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd,
+						m_AxiSramAllocator );
+			m_MidiTracks.push_back( midiTrack );
+
+			m_MidiTracks.back().play( true );
+
+			m_AudioTracks.push_back( trackL );
+			AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
+			const bool isOneshot = static_cast<MNEMONIC_ROW>( cellY ) == MNEMONIC_ROW::AUDIO_ONESHOTS;
+			if ( ! isOneshot ) trackLRef.setLoopLength( m_CurrentMaxLoopCount );
+			if ( entryOtherChannel )
+			{
+				trackLRef.setAmplitudes( 1.0f, 0.0f );
+				m_AudioTracks.push_back( trackR );
+				AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
+				if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
+				trackRRef.setAmplitudes( 0.0f, 1.0f );
+			}
+
+			// reset the loop length for all audio tracks
+			for ( AudioTrack& trackInVec : m_AudioTracks )
+			{
+				if ( ! isOneshot ) trackInVec.setLoopLength( m_CurrentMaxLoopCount );
+			}
+			*/
 		}
 	}
 }
