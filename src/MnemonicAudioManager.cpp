@@ -239,11 +239,6 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 				data[4] = lenBk; data[5] = lenBk >> 1; data[6] = lenBk >> 2; data[7] = lenBk >> 3;
 				if ( ! m_FileManager.writeToEntry(entry, data) ) goto fail;
 
-				/* TODO this will be necessary to convert the header data back when loading
-				lenMd = data[0] | data[1] << 1 | data[2] << 2 | data[3] << 3;
-				lenBk = data[4] | data[5] << 1 | data[6] << 2 | data[7] << 3;
-				*/
-
 				// write midi event data
 				unsigned int bytesWrittenToBlock = 0;
 				for ( unsigned int midiTrackEventNum = 0; midiTrackEventNum < midiData.getSize(); midiTrackEventNum++ )
@@ -532,38 +527,56 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 			|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 	{
-		const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
+		Fat16Entry entry = *m_FileManager.getCurrentDirectoryEntries()[index];
 
-		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "smf", FAT16_EXTENSION_SIZE) == 0
-			|| strncmp(entry->getExtensionRaw(), "SMF", FAT16_EXTENSION_SIZE) == 0) )
+		if ( ! entry.isDeletedEntry() && (strncmp(entry.getExtensionRaw(), "smf", FAT16_EXTENSION_SIZE) == 0
+			|| strncmp(entry.getExtensionRaw(), "SMF", FAT16_EXTENSION_SIZE) == 0) )
 		{
-			// TODO this is all jenk, need to actually implement this
-			/*
-			MidiTrack midiTrack( cellX, cellY, m_TempMidiTrackEvents, m_TempMidiTrackEventsNumEvents, m_TempMidiTrackEventsLoopEnd,
-						m_AxiSramAllocator );
+			m_FileManager.readEntry( entry );
+
+			// load header info
+			SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( entry );
+			unsigned int lenMd = 0;
+			unsigned int lenBk = 0;
+			lenMd = data[0] | data[1] << 1 | data[2] << 2 | data[3] << 3;
+			lenBk = data[4] | data[5] << 1 | data[6] << 2 | data[7] << 3;
+
+			// load midi track events
+			uint8_t* midiTrackEventPrimArr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( lenMd * sizeof(MidiTrackEvent) );
+			unsigned int midiTrackEventPrimArrIndex = 0;
+			unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
+			while ( entry.getFileTransferInProgressFlagRef() )
+			{
+				data = m_FileManager.getSelectedFileNextSector( entry );
+
+				for ( unsigned int blockIndex = 0;
+						blockIndex < sectorSizeInBytes && midiTrackEventPrimArrIndex < (lenMd * sizeof(MidiTrackEvent));
+							blockIndex++ )
+				{
+					midiTrackEventPrimArr[midiTrackEventPrimArrIndex] = data[blockIndex];
+					midiTrackEventPrimArrIndex++;
+				}
+			}
+
+			// create midi track and push to midi tracks vector
+			MidiTrackEvent* midiTrackEvents = reinterpret_cast<MidiTrackEvent*>( midiTrackEventPrimArr );
+			MidiTrack midiTrack( cellX, cellY, midiTrackEvents, lenMd, lenBk, m_AxiSramAllocator );
 			m_MidiTracks.push_back( midiTrack );
 
-			m_MidiTracks.back().play( true );
-
-			m_AudioTracks.push_back( trackL );
-			AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
-			const bool isOneshot = static_cast<MNEMONIC_ROW>( cellY ) == MNEMONIC_ROW::AUDIO_ONESHOTS;
-			if ( ! isOneshot ) trackLRef.setLoopLength( m_CurrentMaxLoopCount );
-			if ( entryOtherChannel )
+			// reset looping info if necessary
+			if ( m_CurrentMaxLoopCount < lenBk )
 			{
-				trackLRef.setAmplitudes( 1.0f, 0.0f );
-				m_AudioTracks.push_back( trackR );
-				AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
-				if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
-				trackRRef.setAmplitudes( 0.0f, 1.0f );
+				m_CurrentMaxLoopCount = lenBk;
+
+				// reset the loop length for all audio tracks
+				for ( AudioTrack& trackInVec : m_AudioTracks )
+				{
+					trackInVec.setLoopLength( m_CurrentMaxLoopCount );
+				}
 			}
 
-			// reset the loop length for all audio tracks
-			for ( AudioTrack& trackInVec : m_AudioTracks )
-			{
-				if ( ! isOneshot ) trackInVec.setLoopLength( m_CurrentMaxLoopCount );
-			}
-			*/
+			// deallocate the primitive array
+			m_AxiSramAllocator.free( midiTrackEventPrimArr );
 		}
 	}
 }
