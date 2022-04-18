@@ -24,18 +24,21 @@ MidiTrack::~MidiTrack()
 {
 }
 
-void MidiTrack::waitForLoopStartOrEnd (const unsigned int timeCode)
+bool MidiTrack::waitForLoopStartOrEnd (const unsigned int timeCode)
 {
 	if ( m_WaitToPlay && timeCode % m_LoopEndInBlocks == 0 )
 	{
 		m_IsPlaying = true;
 		m_WaitToPlay = false;
+		return true;
 	}
 	else if ( m_WaitToStop && timeCode % m_LoopEndInBlocks == 0 )
 	{
 		m_IsPlaying = false;
 		m_WaitToStop = false;
 	}
+
+	return false;
 }
 
 void MidiTrack::addMidiEventsAtTimeCode( const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector )

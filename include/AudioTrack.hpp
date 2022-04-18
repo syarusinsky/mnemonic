@@ -30,7 +30,7 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 
 		Fat16Entry getFatEntry() const { return m_FatEntry; }
 
-		unsigned int getFileLengthInAudioBlocks() { return m_FileLengthInAudioBlocks; }
+		unsigned int getFileLengthInAudioBlocks() const { return m_FileLengthInAudioBlocks; }
 
 		bool shouldFillNextBuffer();
 		void fillNextBuffer (const uint8_t* const compressedBuf);
@@ -43,7 +43,7 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 
 		void setLoopable (const bool isLoopable);
 		bool isLoopable() const { return m_IsLoopable; }
-		void setLoopLength (unsigned int& currentMaxLoopLength); // also modifies the max loop length if this track is longer
+		void setLoopLength (unsigned int currentMaxLoopLength);
 		bool shouldLoop (const unsigned int masterClockCount); // loops if clock count is divisible
 
 		void setAmplitudes (const float amplitudeL, const float amplitudeR);

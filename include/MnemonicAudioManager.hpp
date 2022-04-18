@@ -68,6 +68,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		unsigned int 			m_TempMidiTrackCellX;
 		unsigned int 			m_TempMidiTrackCellY;
 
+		void resetLoopingInfo();
+
 		void playOrStopTrack (unsigned int cellX, unsigned int cellY, bool play);
 
 		void loadFile (unsigned int cellX, unsigned int cellY, unsigned int index);

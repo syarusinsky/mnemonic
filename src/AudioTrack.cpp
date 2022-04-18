@@ -156,11 +156,10 @@ void AudioTrack::setLoopable (const bool isLoopable)
 	m_IsLoopable = isLoopable;
 }
 
-void AudioTrack::setLoopLength (unsigned int& currentMaxLoopLength)
+void AudioTrack::setLoopLength (unsigned int currentMaxLoopLength)
 {
 	if ( currentMaxLoopLength < m_FileLengthInAudioBlocks )
 	{
-		currentMaxLoopLength = m_FileLengthInAudioBlocks;
 		m_LoopLengthInAudioBlocks = m_FileLengthInAudioBlocks;
 	}
 	else

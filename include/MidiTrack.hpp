@@ -30,8 +30,8 @@ class MidiTrack
 
 		SharedData<MidiTrackEvent> getData() { return m_MidiTrackEvents; }
 
-		unsigned int getLengthInMidiTrackEvents() { return m_LengthInMidiTrackEvents; }
-		unsigned int getLoopEndInBlocks() { return m_LoopEndInBlocks; }
+		unsigned int getLengthInMidiTrackEvents() const { return m_LengthInMidiTrackEvents; }
+		unsigned int getLoopEndInBlocks() const { return m_LoopEndInBlocks; }
 
 		void play (bool immediately = false); // only start when last loop is complete, unless immediatly = true
 		void stop (bool immediately = false);
@@ -40,7 +40,7 @@ class MidiTrack
 
 		bool justFinished() { const bool justFinished = m_JustFinished; m_JustFinished = false; return justFinished; }
 
-		void waitForLoopStartOrEnd (const unsigned int timeCode);
+		bool waitForLoopStartOrEnd (const unsigned int timeCode); // returns true when just started
 		void addMidiEventsAtTimeCode (const unsigned int timeCode, std::vector<MidiEvent>& midiEventOutputVector);
 
 	private:

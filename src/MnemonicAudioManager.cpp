@@ -46,6 +46,7 @@ void MnemonicAudioManager::publishUiEvents()
 		{
 			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
 								audioTrack.getCellX(), audioTrack.getCellY()) );
+			this->resetLoopingInfo();
 		}
 	}
 
@@ -62,6 +63,7 @@ void MnemonicAudioManager::publishUiEvents()
 		{
 			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_FINISHED, nullptr, 0, 0,
 								midiTrack.getCellX(), midiTrack.getCellY()) );
+			this->resetLoopingInfo();
 		}
 	}
 }
@@ -118,13 +120,18 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 		if ( audioTrack.shouldLoop(m_MasterClockCount) )
 		{
 			audioTrack.play();
+			this->resetLoopingInfo();
 		}
 	}
 
 	// fill midi event queue with midi events at this time code
 	for ( MidiTrack& midiTrack : m_MidiTracks )
 	{
-		midiTrack.waitForLoopStartOrEnd( m_MasterClockCount );
+		if ( midiTrack.waitForLoopStartOrEnd(m_MasterClockCount) )
+		{
+			// if just started, reset looping info
+			this->resetLoopingInfo();
+		}
 
 		if ( midiTrack.isPlaying() )
 		{
@@ -380,7 +387,6 @@ uint8_t* MnemonicAudioManager::enterFileExplorerHelper (const char* extension, u
 
 void MnemonicAudioManager::enterFileExplorer (bool filterMidiFilesInstead)
 {
-	// TODO this is for b12 files, but need to filter similarly for midi files when entering file explorer for midi
 	static uint8_t* b12PrimArrayPtr = nullptr;
 	static unsigned int b12NumEntries = 0;
 	static uint8_t* midPrimArrayPtr = nullptr;
@@ -516,12 +522,6 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 				if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
 				trackRRef.setAmplitudes( 0.0f, 1.0f );
 			}
-
-			// reset the loop length for all audio tracks
-			for ( AudioTrack& trackInVec : m_AudioTracks )
-			{
-				if ( ! isOneshot ) trackInVec.setLoopLength( m_CurrentMaxLoopCount );
-			}
 		}
 	}
 	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
@@ -563,18 +563,6 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 			MidiTrack midiTrack( cellX, cellY, midiTrackEvents, lenMd, lenBk, m_AxiSramAllocator );
 			m_MidiTracks.push_back( midiTrack );
 
-			// reset looping info if necessary
-			if ( m_CurrentMaxLoopCount < lenBk )
-			{
-				m_CurrentMaxLoopCount = lenBk;
-
-				// reset the loop length for all audio tracks
-				for ( AudioTrack& trackInVec : m_AudioTracks )
-				{
-					trackInVec.setLoopLength( m_CurrentMaxLoopCount );
-				}
-			}
-
 			// deallocate the primitive array
 			m_AxiSramAllocator.free( midiTrackEventPrimArr );
 		}
@@ -603,16 +591,18 @@ void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
 			}
 		}
 
-		if ( ! entryOtherChannel ) return;
-
-		for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end(); trackInVecIt++ )
+		if ( entryOtherChannel )
 		{
-			AudioTrack& trackInVec = *trackInVecIt;
-			if ( cellX == trackInVec.getCellX() && cellY == trackInVec.getCellY() )
+			for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end();
+					trackInVecIt++ )
 			{
-				m_AudioTracks.erase( trackInVecIt );
+				AudioTrack& trackInVec = *trackInVecIt;
+				if ( cellX == trackInVec.getCellX() && cellY == trackInVec.getCellY() )
+				{
+					m_AudioTracks.erase( trackInVecIt );
 
-				break;
+					break;
+				}
 			}
 		}
 	}
@@ -630,6 +620,38 @@ void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
 
 			break;
 		}
+	}
+}
+
+void MnemonicAudioManager::resetLoopingInfo()
+{
+	// reset looping info if necessary
+	unsigned int maxLoopCount = MNEMONIC_NEOTRELLIS_COLS; // 8 to avoid arithmetic exception when performing modulo
+	for ( MidiTrack& midiTrack : m_MidiTracks )
+	{
+		if ( midiTrack.isPlaying() )
+		{
+			const unsigned int loopLenInBlocks = midiTrack.getLoopEndInBlocks();
+			maxLoopCount = ( maxLoopCount < loopLenInBlocks ) ? loopLenInBlocks : maxLoopCount;
+		}
+	}
+
+	for ( AudioTrack& audioTrack : m_AudioTracks )
+	{
+		if ( audioTrack.isPlaying() )
+		{
+			const unsigned int loopLenInBlocks = audioTrack.getFileLengthInAudioBlocks();
+			maxLoopCount = ( maxLoopCount < loopLenInBlocks ) ? loopLenInBlocks : maxLoopCount;
+		}
+	}
+
+	if ( maxLoopCount < m_CurrentMaxLoopCount )
+	{
+		m_CurrentMaxLoopCount = maxLoopCount;
+	}
+	else if ( maxLoopCount > m_CurrentMaxLoopCount )
+	{
+		m_CurrentMaxLoopCount = maxLoopCount;
 	}
 }
 
