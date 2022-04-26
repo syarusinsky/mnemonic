@@ -26,6 +26,14 @@ enum class MidiRecordingState : unsigned int
 	JUST_FINISHED_RECORDING = 3
 };
 
+enum class Directory : unsigned int
+{
+	ROOT = 0,
+	AUDIO = 1,
+	MIDI = 2,
+	SCENE = 3
+};
+
 class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnemonicParameterEventListener, public IMidiEventListener
 {
 	public:
@@ -46,6 +54,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 	private:
 		IAllocator 			m_AxiSramAllocator;
 		Fat16FileManager 		m_FileManager;
+
+		Directory 			m_CurrentDirectory;
 
 		unsigned int 			m_TransportProgress;
 
@@ -71,6 +81,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		void resetLoopingInfo();
 
 		void playOrStopTrack (unsigned int cellX, unsigned int cellY, bool play);
+
+		bool goToDirectory (const Directory& directory); // returns false if directory not found, true if successful
 
 		void loadFile (unsigned int cellX, unsigned int cellY, unsigned int index);
 		void unloadFile (unsigned int cellX, unsigned int cellY);

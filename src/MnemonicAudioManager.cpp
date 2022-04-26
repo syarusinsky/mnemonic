@@ -9,6 +9,7 @@
 MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiSram, unsigned int axiSramSizeInBytes) :
 	m_AxiSramAllocator( axiSram, axiSramSizeInBytes ),
 	m_FileManager( sdCard, &m_AxiSramAllocator ),
+	m_CurrentDirectory( Directory::ROOT ),
 	m_TransportProgress( 0 ),
 	m_AudioTracks(),
 	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
@@ -241,7 +242,7 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 
 				// write 'header' data first
 				unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
-				SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sectorSizeInBytes );
+				SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sectorSizeInBytes, &m_AxiSramAllocator );
 				data[0] = lenMd; data[1] = lenMd >> 1; data[2] = lenMd >> 2; data[3] = lenMd >> 3;
 				data[4] = lenBk; data[5] = lenBk >> 1; data[6] = lenBk >> 2; data[7] = lenBk >> 3;
 				if ( ! m_FileManager.writeToEntry(entry, data) ) goto fail;
@@ -395,10 +396,12 @@ void MnemonicAudioManager::enterFileExplorer (bool filterMidiFilesInstead)
 	// since the sd card is not hot-pluggable, we only need to get the list of entries once
 	if ( ! filterMidiFilesInstead && b12PrimArrayPtr == nullptr )
 	{
+		this->goToDirectory( Directory::AUDIO );
 		b12PrimArrayPtr = this->enterFileExplorerHelper( "b12", b12NumEntries );
 	}
 	else if ( filterMidiFilesInstead && midPrimArrayPtr == nullptr )
 	{
+		this->goToDirectory( Directory::MIDI );
 		midPrimArrayPtr = this->enterFileExplorerHelper( "smf", midNumEntries );
 	}
 
@@ -496,6 +499,8 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 
 	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 	{
+		if ( ! this->goToDirectory(Directory::AUDIO) ) return;
+
 		const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
 
 		// find the stereo channel if available
@@ -527,6 +532,8 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 			|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 	{
+		if ( ! this->goToDirectory(Directory::MIDI) ) return;
+
 		Fat16Entry entry = *m_FileManager.getCurrentDirectoryEntries()[index];
 
 		if ( ! entry.isDeletedEntry() && (strncmp(entry.getExtensionRaw(), "smf", FAT16_EXTENSION_SIZE) == 0
@@ -575,6 +582,8 @@ void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
 
 	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 	{
+		if ( ! this->goToDirectory(Directory::AUDIO) ) return;
+
 		Fat16Entry* entryOtherChannel = nullptr;
 
 		for ( std::vector<AudioTrack>::iterator trackInVecIt = m_AudioTracks.begin(); trackInVecIt != m_AudioTracks.end(); trackInVecIt++ )
@@ -693,4 +702,57 @@ Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenameDispl
 	}
 
 	return nullptr;
+}
+
+bool MnemonicAudioManager::goToDirectory (const Directory& directory)
+{
+	if ( m_CurrentDirectory == directory ) return true;
+
+	if ( m_CurrentDirectory == Directory::AUDIO || m_CurrentDirectory == Directory::MIDI || m_CurrentDirectory == Directory::SCENE )
+	{
+		// go back to root directory
+		m_FileManager.selectEntry( 1 );
+		m_CurrentDirectory = Directory::ROOT;
+	}
+
+	char dirName[FAT16_FILENAME_SIZE + 1] = { '\0' };
+	unsigned int numChars = 0;
+	if ( directory == Directory::AUDIO )
+	{
+		strcpy( dirName, "AUDIO" );
+		numChars = 5;
+	}
+	else if ( directory == Directory::MIDI )
+	{
+		strcpy( dirName, "MIDI" );
+		numChars = 4;
+	}
+	else if ( directory == Directory::SCENE )
+	{
+		strcpy( dirName, "SCENE" );
+		numChars = 5;
+	}
+
+	if ( directory != Directory::ROOT )
+	{
+		unsigned int entryNum = 0;
+		for ( Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+		{
+			if ( strncmp(entry->getFilenameRaw(), dirName, numChars) == 0 )
+			{
+				m_FileManager.selectEntry( entryNum );
+				m_CurrentDirectory = directory;
+				return true;
+			}
+
+			entryNum++;
+		}
+
+		// we haven't found the directory, so send invalid filesystem message and return false
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::INVALID_FILESYSTEM, nullptr, 0, 0) );
+		this->unbindFromMnemonicParameterEventSystem();
+		return false;
+	}
+
+	return true;
 }
