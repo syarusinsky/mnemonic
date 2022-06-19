@@ -210,6 +210,8 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 	{
 		if ( cellX == midiTrack.getCellX() && cellY == midiTrack.getCellY() )
 		{
+			if ( ! this->goToDirectory(Directory::MIDI) ) return;
+
 			std::string filename( nameWithoutExt );
 			// remove whitespace
 			filename.erase( remove_if(filename.begin(), filename.end(), isspace), filename.end() );
