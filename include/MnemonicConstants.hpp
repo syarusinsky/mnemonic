@@ -39,6 +39,8 @@ constexpr float MNEMONIC_POT_MENU_CHANGE_THRESH = 0.5f; // threshold to break fo
 constexpr unsigned int MNEMONIC_PARAMETER_EVENT_QUEUE_SIZE = 1000;
 constexpr unsigned int MNEMONIC_UI_EVENT_QUEUE_SIZE = 10;
 
+constexpr const char* MNEMONIC_SCENE_VERSION = "1.0.0";
+
 enum class PARAM_CHANNEL : unsigned int
 {
 	NULL_PARAM 		= 0,
@@ -49,7 +51,8 @@ enum class PARAM_CHANNEL : unsigned int
 	START_MIDI_RECORDING,
 	END_MIDI_RECORDING,
 	SAVE_MIDI_RECORDING,
-	LOAD_MIDI_RECORDING
+	LOAD_MIDI_RECORDING,
+	SAVE_SCENE
 };
 
 enum class POT_CHANNEL : unsigned int

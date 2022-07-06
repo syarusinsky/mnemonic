@@ -8,6 +8,7 @@
 
 #include "IMidiEventListener.hpp"
 #include "SharedData.hpp"
+#include "Fat16Entry.hpp"
 #include <vector>
 
 class IAllocator;
@@ -22,7 +23,8 @@ class MidiTrack
 {
 	public:
 		MidiTrack (unsigned int cellX, unsigned int cellY, const MidiTrackEvent* const midiTrackEvents,
-				const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd, IAllocator& allocator);
+				const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd, IAllocator& allocator,
+				bool isSaved = false, const char* filenameDisplay = nullptr);
 		~MidiTrack();
 
 		unsigned int getCellX() const { return m_CellX; }
@@ -35,6 +37,11 @@ class MidiTrack
 
 		void play (bool immediately = false); // only start when last loop is complete, unless immediatly = true
 		void stop (bool immediately = false);
+
+		void setIsSaved (const char* filenameDisplay);
+		bool isSaved() const { return m_IsSaved; }
+
+		const char* getFilenameDisplay() const { return m_FilenameDisplay; }
 
 		bool isPlaying() const { return m_IsPlaying; }
 
@@ -52,6 +59,9 @@ class MidiTrack
 		unsigned int 			m_LoopEndInBlocks;
 
 		unsigned int 			m_MidiTrackEventsIndex;
+
+		bool 				m_IsSaved; // whether or not the midi file is saved in the file system
+		char 				m_FilenameDisplay[FAT16_FILENAME_SIZE + FAT16_EXTENSION_SIZE + 2];
 
 		bool 				m_WaitToPlay; // both to ensure stop and start at the beginning of the loops
 		bool 				m_WaitToStop;

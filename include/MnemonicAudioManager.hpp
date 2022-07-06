@@ -91,6 +91,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		void endRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
 		void saveMidiRecording (unsigned int cellX, unsigned int cellY, const char* nameWithoutExt);
 
+		void saveScene (const char* nameWithoutExt);
+
 		uint8_t* enterFileExplorerHelper (const char* extension, unsigned int& numEntries);
 		void enterFileExplorer (bool filterMidiFilesInstead = false); // normally filters b12 files
 

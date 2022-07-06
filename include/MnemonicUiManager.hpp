@@ -29,7 +29,8 @@ enum class MNEMONIC_MENUS
 	STATUS,
 	FILE_EXPLORER,
 	STRING_EDIT,
-	MIDI_RECORDING_FAILED
+	MIDI_RECORDING_FAILED,
+	SCENE_SAVING_FAILED
 };
 
 enum class CELL_STATE
@@ -144,6 +145,7 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		bool hasBrokenMenuChangeThreshold (float newVal, float cachedVal);
 
 		void displayErrorMessage (const std::string& errorMessage);
+		void displayErrorMessage (const std::string& errorMessageTop, const std::string& errorMessageBottom);
 
 		void drawScrollableMenu (ScrollableMenuModel& menu, bool (MnemonicUiManager::*shouldTickFunc)(unsigned int), MnemonicUiManager& ui);
 

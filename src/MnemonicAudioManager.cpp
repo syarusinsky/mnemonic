@@ -216,7 +216,7 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 			// remove whitespace
 			filename.erase( remove_if(filename.begin(), filename.end(), isspace), filename.end() );
 
-			Fat16Entry entry( filename, "smf" );
+			Fat16Entry entry( filename, "SMF" );
 
 			// check for a duplicate and delete if necessary
 			unsigned int entryNum = 0;
@@ -278,6 +278,8 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 					if ( ! m_FileManager.finalizeEntry(entry) ) goto fail;
 				}
 
+				midiTrack.setIsSaved( entry.getFilenameDisplay() );
+
 				// send success message
 				IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_RECORDING_STATUS, nullptr, 0,
 									static_cast<unsigned int>(true)) );
@@ -292,6 +294,83 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 fail:
 	// send failed message
 	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_RECORDING_STATUS, nullptr, 0,
+						static_cast<unsigned int>(false)) );
+}
+
+void MnemonicAudioManager::saveScene (const char* nameWithoutExt)
+{
+	std::string fileData = "";
+
+	// add version data
+	fileData += "VER: " + std::string(MNEMONIC_SCENE_VERSION) + '\n';
+
+	// add all audio file names with neotrellis cell locations
+	for ( const AudioTrack& audioTrack : m_AudioTracks )
+	{
+		fileData += "AUDIO: " + std::to_string(audioTrack.getCellX()) + "," + std::to_string(audioTrack.getCellY());
+		fileData += " " + std::string(audioTrack.getFatEntry().getFilenameDisplay()) + '\n';
+	}
+
+	// add all midi file names with neotrellis cell locations
+	for ( const MidiTrack& midiTrack : m_MidiTracks )
+	{
+		// if there are any unsaved midi tracks, report to the user that they need to be saved
+		if ( ! midiTrack.isSaved() )
+		{
+			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_NOT_SAVED, nullptr, 0,
+								0, midiTrack.getCellX(), midiTrack.getCellY()) );
+			return;
+		}
+
+		fileData += "MIDI: " + std::to_string(midiTrack.getCellX()) + "," + std::to_string(midiTrack.getCellY());
+		fileData += " " + std::string(midiTrack.getFilenameDisplay()) + '\n';
+	}
+
+	const char* fileDataCStr = fileData.c_str();
+	SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( fileData.length() );
+	for ( unsigned int character = 0; character < fileData.length(); character++ )
+	{
+		data[character] = fileDataCStr[character];
+	}
+
+	if ( ! this->goToDirectory(Directory::SCENE) ) return;
+
+	std::string filename( nameWithoutExt );
+	// remove whitespace
+	filename.erase( remove_if(filename.begin(), filename.end(), isspace), filename.end() );
+	Fat16Entry entry( filename, "SCN" );
+
+	// check for a duplicate and delete if necessary
+	unsigned int entryNum = 0;
+	std::vector<Fat16Entry*>& dirEntries = m_FileManager.getCurrentDirectoryEntries();
+	for ( const Fat16Entry* const entryPtr : dirEntries )
+	{
+		const char* entryPtrFilename = entryPtr->getFilenameDisplay();
+		const char* newEntryFilename = entry.getFilenameDisplay();
+		if ( strcmp(entryPtrFilename, newEntryFilename) == 0 )
+		{
+			m_FileManager.deleteEntry( entryNum );
+
+			break;
+		}
+
+		entryNum++;
+	}
+
+	if ( m_FileManager.createEntry(entry) )
+	{
+		if ( ! m_FileManager.flushToEntry(entry, data) ) goto fail;
+
+		// send success message
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::SCENE_SAVING_STATUS, nullptr, 0,
+							static_cast<unsigned int>(true)) );
+
+		return;
+	}
+
+fail:
+	// send failed message
+	IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::SCENE_SAVING_STATUS, nullptr, 0,
 						static_cast<unsigned int>(false)) );
 }
 
@@ -334,6 +413,10 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			break;
 		case PARAM_CHANNEL::LOAD_MIDI_RECORDING:
 			this->enterFileExplorer( true );
+
+			break;
+		case PARAM_CHANNEL::SAVE_SCENE:
+			this->saveScene( paramEvent.getString() );
 
 			break;
 		default:
@@ -404,7 +487,7 @@ void MnemonicAudioManager::enterFileExplorer (bool filterMidiFilesInstead)
 	else if ( filterMidiFilesInstead && midPrimArrayPtr == nullptr )
 	{
 		this->goToDirectory( Directory::MIDI );
-		midPrimArrayPtr = this->enterFileExplorerHelper( "smf", midNumEntries );
+		midPrimArrayPtr = this->enterFileExplorerHelper( "SMF", midNumEntries );
 	}
 
 	// send the ui event with all this data
@@ -569,7 +652,7 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 
 			// create midi track and push to midi tracks vector
 			MidiTrackEvent* midiTrackEvents = reinterpret_cast<MidiTrackEvent*>( midiTrackEventPrimArr );
-			MidiTrack midiTrack( cellX, cellY, midiTrackEvents, lenMd, lenBk, m_AxiSramAllocator );
+			MidiTrack midiTrack( cellX, cellY, midiTrackEvents, lenMd, lenBk, m_AxiSramAllocator, true, entry.getFilenameDisplay() );
 			m_MidiTracks.push_back( midiTrack );
 
 			// deallocate the primitive array
@@ -627,9 +710,9 @@ void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
 			if ( midiTrack.getCellX() == cellX && midiTrack.getCellY() == cellY )
 			{
 				m_MidiTracks.erase( trackInVecIt );
-			}
 
-			break;
+				break;
+			}
 		}
 	}
 }

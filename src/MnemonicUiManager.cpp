@@ -128,6 +128,17 @@ void MnemonicUiManager::draw()
 		IMnemonicLCDRefreshEventListener::PublishEvent(
 				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
 	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::SCENE_SAVING_FAILED )
+	{
+		m_Graphics->setColor( false );
+		m_Graphics->fill();
+
+		m_Graphics->setColor( true );
+		m_Graphics->drawText( 0.05f, 0.4f, "SAVING FAILED", 1.0f );
+
+		IMnemonicLCDRefreshEventListener::PublishEvent(
+				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+	}
 	else
 	{
 		m_Graphics->setColor( true );
@@ -428,7 +439,22 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 
 		if ( row == MNEMONIC_ROW::TRANSPORT )
 		{
-			// for now do nothing, maybe in the future scrub audio and midi tracks to this time code?
+			// for now only use for loading and saving scenes, maybe in the future scrub audio and midi tracks to this time code?
+			if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+			{
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, 0,
+							static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
+			}
+			else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
+			{
+				// move to string edit menu
+				m_StringEditModel.setString( "        " );
+				m_CurrentMenu = MNEMONIC_MENUS::STRING_EDIT;
+				m_CachedCell.x = keyX;
+				m_CachedCell.y = keyY;
+				this->draw();
+			}
 		}
 		else if ( (row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS) )
 		{
@@ -566,6 +592,14 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 								m_StringEditModel.getString()) );
 			}
 		}
+		else if ( row == MNEMONIC_ROW::TRANSPORT )
+		{
+			// send save scene file event
+			IMnemonicParameterEventListener::PublishEvent(
+					MnemonicParameterEvent(keyX, keyY, 0,
+						static_cast<unsigned int>(PARAM_CHANNEL::SAVE_SCENE),
+							m_StringEditModel.getString()) );
+		}
 	}
 }
 
@@ -650,6 +684,31 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			this->draw();
 
 			break;
+		case UiEventType::MIDI_TRACK_NOT_SAVED:
+		{
+			std::string msgTop;
+			msgTop += "MIDI TRACK AT";
+			std::string msgBottom;
+			msgBottom += std::to_string(event.getCellX()) + "," + std::to_string(event.getCellY()) + " UNSAVED";
+			this->displayErrorMessage( msgTop, msgBottom );
+
+			m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+		}
+
+			break;
+		case UiEventType::SCENE_SAVING_STATUS:
+			if ( event.getChannel() == static_cast<unsigned int>(false) )
+			{
+				m_CurrentMenu = MNEMONIC_MENUS::SCENE_SAVING_FAILED;
+			}
+			else if ( event.getChannel() == static_cast<unsigned int>(true) )
+			{
+				m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+			}
+
+			this->draw();
+
+			break;
 		default:
 			break;
 	}
@@ -662,6 +721,19 @@ void MnemonicUiManager::displayErrorMessage (const std::string& errorMessage)
 
 	m_Graphics->setColor( true );
 	m_Graphics->drawText( 0.1f, 0.1f, errorMessage.c_str(), 1.0f );
+
+	IMnemonicLCDRefreshEventListener::PublishEvent(
+			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+}
+
+void MnemonicUiManager::displayErrorMessage (const std::string& errorMessageTop, const std::string& errorMessageBottom)
+{
+	m_Graphics->setColor( false );
+	m_Graphics->fill();
+
+	m_Graphics->setColor( true );
+	m_Graphics->drawText( 0.1f, 0.1f, errorMessageTop.c_str(), 1.0f );
+	m_Graphics->drawText( 0.1f, 0.25f, errorMessageBottom.c_str(), 1.0f );
 
 	IMnemonicLCDRefreshEventListener::PublishEvent(
 			MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );

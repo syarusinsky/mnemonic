@@ -1,13 +1,18 @@
 #include "MidiTrack.hpp"
 
+#include <string.h>
+
 MidiTrack::MidiTrack (unsigned int cellX, unsigned int cellY, const MidiTrackEvent* const midiTrackEvents,
-			const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd, IAllocator& allocator) :
+			const unsigned int lengthInMidiTrackEvents, const unsigned int loopEnd, IAllocator& allocator,
+			bool isSaved, const char* filenameDisplay) :
 	m_CellX( cellX ),
 	m_CellY( cellY ),
 	m_MidiTrackEvents( SharedData<MidiTrackEvent>::MakeSharedData(lengthInMidiTrackEvents, &allocator) ),
 	m_LengthInMidiTrackEvents( lengthInMidiTrackEvents ),
 	m_LoopEndInBlocks( loopEnd ),
 	m_MidiTrackEventsIndex( 0 ),
+	m_IsSaved( isSaved ),
+	m_FilenameDisplay(),
 	m_WaitToPlay( false ),
 	m_WaitToStop( false ),
 	m_IsPlaying( false ),
@@ -18,6 +23,8 @@ MidiTrack::MidiTrack (unsigned int cellX, unsigned int cellY, const MidiTrackEve
 	{
 		m_MidiTrackEvents[midiEventNum] = midiTrackEvents[midiEventNum];
 	}
+
+	if ( filenameDisplay ) strcpy( m_FilenameDisplay, filenameDisplay );
 }
 
 MidiTrack::~MidiTrack()
@@ -94,4 +101,17 @@ void MidiTrack::stop (bool immediately)
 	}
 	m_WaitToPlay = false;
 	m_JustFinished = true;
+}
+
+void MidiTrack::setIsSaved (const char* filenameDisplay)
+{
+	if ( filenameDisplay )
+	{
+		m_IsSaved = true;
+		strcpy( m_FilenameDisplay, filenameDisplay );
+	}
+	else
+	{
+		m_IsSaved = false;
+	}
 }
