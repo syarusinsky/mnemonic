@@ -78,11 +78,13 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		// to store the directory entries for printing
 		std::vector<UiFileExplorerEntry> 	m_AudioFileEntries;
 		std::vector<UiFileExplorerEntry> 	m_MidiFileEntries;
+		std::vector<UiFileExplorerEntry> 	m_SceneFileEntries;
 		std::vector<UiFileExplorerEntry>* 	m_FileEntriesToUse;
 
 		// menu models for audio file explorer and midi file explorer
 		ScrollableMenuModel 			m_AudioFileMenuModel;
 		ScrollableMenuModel 			m_MidiFileMenuModel;
+		ScrollableMenuModel 			m_SceneFileMenuModel;
 		ScrollableMenuModel* 			m_MenuModelToUse;
 
 		// model for editing of a string

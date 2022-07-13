@@ -94,7 +94,13 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		void saveScene (const char* nameWithoutExt);
 
 		uint8_t* enterFileExplorerHelper (const char* extension, unsigned int& numEntries);
-		void enterFileExplorer (bool filterMidiFilesInstead = false); // normally filters b12 files
+		void enterFileExplorer (const Directory& dir);
+
+		bool loadSceneFileHelper (const std::string& versionStr, std::string& sceneStr);
+		bool loadAudioFileHelper (const std::string& filename, unsigned int cellX, unsigned int cellY);
+		bool loadAudioFileHelper (unsigned int index, unsigned int cellX, unsigned int cellY, bool loadStereo = true);
+		bool loadMidiFileHelper (const std::string& filename, unsigned int cellX, unsigned int cellY);
+		bool loadMidiFileHelper (unsigned int index, unsigned int cellX, unsigned int cellY);
 
 		Fat16Entry* lookForOtherChannel (const char* filenameDisplay); // for looking for other stereo channel
 };

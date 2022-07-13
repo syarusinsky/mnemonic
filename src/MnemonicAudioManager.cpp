@@ -383,8 +383,8 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 
 	switch ( channel )
 	{
-		case PARAM_CHANNEL::ENTER_FILE_EXPLORER:
-			this->enterFileExplorer();
+		case PARAM_CHANNEL::LOAD_AUDIO_RECORDING:
+			this->enterFileExplorer( Directory::AUDIO );
 
 			break;
 		case PARAM_CHANNEL::LOAD_FILE:
@@ -412,11 +412,15 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 
 			break;
 		case PARAM_CHANNEL::LOAD_MIDI_RECORDING:
-			this->enterFileExplorer( true );
+			this->enterFileExplorer( Directory::MIDI );
 
 			break;
 		case PARAM_CHANNEL::SAVE_SCENE:
 			this->saveScene( paramEvent.getString() );
+
+			break;
+		case PARAM_CHANNEL::LOAD_SCENE:
+			this->enterFileExplorer( Directory::SCENE );
 
 			break;
 		default:
@@ -471,33 +475,44 @@ uint8_t* MnemonicAudioManager::enterFileExplorerHelper (const char* extension, u
 	return primArrayPtr;
 }
 
-void MnemonicAudioManager::enterFileExplorer (bool filterMidiFilesInstead)
+void MnemonicAudioManager::enterFileExplorer (const Directory& dir)
 {
 	static uint8_t* b12PrimArrayPtr = nullptr;
 	static unsigned int b12NumEntries = 0;
 	static uint8_t* midPrimArrayPtr = nullptr;
 	static unsigned int midNumEntries = 0;
+	static uint8_t* scnPrimArrayPtr = nullptr;
+	static unsigned int scnNumEntries = 0;
 
 	// since the sd card is not hot-pluggable, we only need to get the list of entries once
-	if ( ! filterMidiFilesInstead && b12PrimArrayPtr == nullptr )
+	if ( dir == Directory::AUDIO && b12PrimArrayPtr == nullptr )
 	{
 		this->goToDirectory( Directory::AUDIO );
-		b12PrimArrayPtr = this->enterFileExplorerHelper( "b12", b12NumEntries );
+		b12PrimArrayPtr = this->enterFileExplorerHelper( "B12", b12NumEntries );
 	}
-	else if ( filterMidiFilesInstead && midPrimArrayPtr == nullptr )
+	else if ( dir == Directory::MIDI && midPrimArrayPtr == nullptr )
 	{
 		this->goToDirectory( Directory::MIDI );
 		midPrimArrayPtr = this->enterFileExplorerHelper( "SMF", midNumEntries );
 	}
+	else if ( dir == Directory::SCENE && scnPrimArrayPtr == nullptr )
+	{
+		this->goToDirectory( Directory::SCENE );
+		scnPrimArrayPtr = this->enterFileExplorerHelper( "SCN", scnNumEntries );
+	}
 
 	// send the ui event with all this data
-	if ( ! filterMidiFilesInstead )
+	if ( dir == Directory::AUDIO )
 	{
 		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, b12PrimArrayPtr, b12NumEntries, 0) );
 	}
-	else // filter midi files instead
+	else if ( dir == Directory::MIDI ) // filter midi files instead
 	{
 		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, midPrimArrayPtr, midNumEntries, 1) );
+	}
+	else if ( dir == Directory::SCENE ) // filter scene files instead
+	{
+		IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::ENTER_FILE_EXPLORER, scnPrimArrayPtr, scnNumEntries, 2) );
 	}
 }
 
@@ -582,81 +597,54 @@ void MnemonicAudioManager::loadFile (unsigned int cellX, unsigned int cellY, uns
 {
 	MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
 
-	if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+	if ( row == MNEMONIC_ROW::TRANSPORT )
 	{
-		if ( ! this->goToDirectory(Directory::AUDIO) ) return;
+		if ( ! this->goToDirectory(Directory::SCENE) ) return;
 
-		const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
+		Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
 
-		// find the stereo channel if available
-		const Fat16Entry* entryOtherChannel = this->lookForOtherChannel( entry->getFilenameDisplay() );
-
-		if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
-			|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
+		// load the scene file contents into a string
+		std::string sceneStr;
+		m_FileManager.readEntry( *entry );
+		unsigned int bytesRead = 0;
+		while ( entry->getFileTransferInProgressFlagRef() )
 		{
-			AudioTrack trackL( cellX, cellY, &m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(),
-						m_AxiSramAllocator, m_DecompressedBuffer );
-			AudioTrack trackR( cellX, cellY, &m_FileManager, (entryOtherChannel) ? *entryOtherChannel : *entry,
-						m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
-						m_DecompressedBuffer );
-
-			m_AudioTracks.push_back( trackL );
-			AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
-			const bool isOneshot = static_cast<MNEMONIC_ROW>( cellY ) == MNEMONIC_ROW::AUDIO_ONESHOTS;
-			if ( ! isOneshot ) trackLRef.setLoopLength( m_CurrentMaxLoopCount );
-			if ( entryOtherChannel )
+			SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( *entry );
+			for ( unsigned int byte = 0; byte < data.getSize() && bytesRead < entry->getFileSizeInBytes(); byte++ )
 			{
-				trackLRef.setAmplitudes( 1.0f, 0.0f );
-				m_AudioTracks.push_back( trackR );
-				AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
-				if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
-				trackRRef.setAmplitudes( 0.0f, 1.0f );
+				sceneStr += static_cast<char>( data[byte] );
+				bytesRead++;
 			}
+		}
+
+		// parse and get version
+		if ( sceneStr.find("VER:") != std::string::npos )
+		{
+			size_t spacePos = sceneStr.find( " " );
+			std::string versionStr = sceneStr.substr( spacePos + 1, sceneStr.find('\n') - spacePos - 1 );
+			if ( ! this->loadSceneFileHelper(versionStr, sceneStr) )
+			{
+				// TODO ui should display error
+			}
+		}
+		else
+		{
+			// TODO ui should display error
+		}
+	}
+	else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+	{
+		if ( ! this->loadAudioFileHelper(index, cellX, cellY) )
+		{
+			// TODO ui should display error
 		}
 	}
 	else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 			|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 	{
-		if ( ! this->goToDirectory(Directory::MIDI) ) return;
-
-		Fat16Entry entry = *m_FileManager.getCurrentDirectoryEntries()[index];
-
-		if ( ! entry.isDeletedEntry() && (strncmp(entry.getExtensionRaw(), "smf", FAT16_EXTENSION_SIZE) == 0
-			|| strncmp(entry.getExtensionRaw(), "SMF", FAT16_EXTENSION_SIZE) == 0) )
+		if ( ! this->loadMidiFileHelper(index, cellX, cellY) )
 		{
-			m_FileManager.readEntry( entry );
-
-			// load header info
-			SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( entry );
-			unsigned int lenMd = 0;
-			unsigned int lenBk = 0;
-			lenMd = data[0] | data[1] << 1 | data[2] << 2 | data[3] << 3;
-			lenBk = data[4] | data[5] << 1 | data[6] << 2 | data[7] << 3;
-
-			// load midi track events
-			uint8_t* midiTrackEventPrimArr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( lenMd * sizeof(MidiTrackEvent) );
-			unsigned int midiTrackEventPrimArrIndex = 0;
-			unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
-			while ( entry.getFileTransferInProgressFlagRef() )
-			{
-				data = m_FileManager.getSelectedFileNextSector( entry );
-
-				for ( unsigned int blockIndex = 0;
-						blockIndex < sectorSizeInBytes && midiTrackEventPrimArrIndex < (lenMd * sizeof(MidiTrackEvent));
-							blockIndex++ )
-				{
-					midiTrackEventPrimArr[midiTrackEventPrimArrIndex] = data[blockIndex];
-					midiTrackEventPrimArrIndex++;
-				}
-			}
-
-			// create midi track and push to midi tracks vector
-			MidiTrackEvent* midiTrackEvents = reinterpret_cast<MidiTrackEvent*>( midiTrackEventPrimArr );
-			MidiTrack midiTrack( cellX, cellY, midiTrackEvents, lenMd, lenBk, m_AxiSramAllocator, true, entry.getFilenameDisplay() );
-			m_MidiTracks.push_back( midiTrack );
-
-			// deallocate the primitive array
-			m_AxiSramAllocator.free( midiTrackEventPrimArr );
+			// TODO ui should display error
 		}
 	}
 }
@@ -840,4 +828,181 @@ bool MnemonicAudioManager::goToDirectory (const Directory& directory)
 	}
 
 	return true;
+}
+
+bool MnemonicAudioManager::loadSceneFileHelper (const std::string& versionStr, std::string& sceneStr)
+{
+	if ( versionStr == "1.0.0" )
+	{
+		// first erase the version line
+		sceneStr.erase( 0, sceneStr.find('\n') + 1 );
+
+		// load each audio file
+		while ( sceneStr.find("AUDIO: ") != std::string::npos )
+		{
+			sceneStr.erase( 0, sceneStr.find(" ") + 1 );
+			unsigned int cellX = std::stoi( sceneStr.substr(0, sceneStr.find(",")) );
+			sceneStr.erase( 0, sceneStr.find(",") + 1 );
+			unsigned int cellY = std::stoi( sceneStr.substr(0, sceneStr.find(" ")) );
+			sceneStr.erase( 0, sceneStr.find(" ") + 1 );
+			std::string audioFilename = sceneStr.substr( 0, sceneStr.find('\n') );
+			sceneStr.erase( 0, sceneStr.find('\n') + 1 );
+			if ( ! this->loadAudioFileHelper(audioFilename, cellX, cellY) ) return false;
+		}
+
+		// load each midi file
+		while ( sceneStr.find("MIDI: ") != std::string::npos )
+		{
+			sceneStr.erase( 0, sceneStr.find(" ") + 1 );
+			unsigned int cellX = std::stoi( sceneStr.substr(0, sceneStr.find(",")) );
+			sceneStr.erase( 0, sceneStr.find(",") + 1 );
+			unsigned int cellY = std::stoi( sceneStr.substr(0, sceneStr.find(" ")) );
+			sceneStr.erase( 0, sceneStr.find(" ") + 1 );
+			std::string midiFilename = sceneStr.substr( 0, sceneStr.find('\n') );
+			sceneStr.erase( 0, sceneStr.find('\n') + 1 );
+			if ( ! this->loadMidiFileHelper(midiFilename, cellX, cellY) ) return false;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool MnemonicAudioManager::loadAudioFileHelper (const std::string& filename, unsigned int cellX, unsigned int cellY)
+{
+	if ( ! this->goToDirectory(Directory::AUDIO) ) return false;
+
+	unsigned int index = 0;
+	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+	{
+		std::string filenameUppercaseExt = filename;
+		std::string filenameLowercaseExt = filename;
+		filenameUppercaseExt.replace( filenameUppercaseExt.find(".") + 1, 3, "B12" );
+		filenameLowercaseExt.replace( filenameLowercaseExt.find(".") + 1, 3, "b12" );
+		if ( strcmp(entry->getFilenameDisplay(), filenameUppercaseExt.c_str()) == 0
+			|| strcmp(entry->getFilenameDisplay(), filenameLowercaseExt.c_str()) == 0 )
+		{
+			return this->loadAudioFileHelper( index, cellX, cellY, false );
+		}
+
+		index++;
+	}
+
+	return false;
+}
+
+bool MnemonicAudioManager::loadAudioFileHelper (unsigned int index, unsigned int cellX, unsigned int cellY, bool loadStereo)
+{
+	if ( ! this->goToDirectory(Directory::AUDIO) ) return false;
+
+	const Fat16Entry* entry = m_FileManager.getCurrentDirectoryEntries()[index];
+
+	// find the stereo channel if available
+	const Fat16Entry* entryOtherChannel = ( loadStereo ) ? this->lookForOtherChannel( entry->getFilenameDisplay() ) : nullptr;
+
+	if ( ! entry->isDeletedEntry() && (strncmp(entry->getExtensionRaw(), "b12", FAT16_EXTENSION_SIZE) == 0
+		|| strncmp(entry->getExtensionRaw(), "B12", FAT16_EXTENSION_SIZE) == 0) )
+	{
+		AudioTrack trackL( cellX, cellY, &m_FileManager, *entry, m_FileManager.getActiveBootSector()->getSectorSizeInBytes(),
+					m_AxiSramAllocator, m_DecompressedBuffer );
+		AudioTrack trackR( cellX, cellY, &m_FileManager, (entryOtherChannel) ? *entryOtherChannel : *entry,
+					m_FileManager.getActiveBootSector()->getSectorSizeInBytes(), m_AxiSramAllocator,
+					m_DecompressedBuffer );
+
+		m_AudioTracks.push_back( trackL );
+		AudioTrack& trackLRef = m_AudioTracks[m_AudioTracks.size() - 1];
+		const bool isOneshot = static_cast<MNEMONIC_ROW>( cellY ) == MNEMONIC_ROW::AUDIO_ONESHOTS;
+		if ( ! isOneshot ) trackLRef.setLoopLength( m_CurrentMaxLoopCount );
+		if ( entryOtherChannel )
+		{
+			trackLRef.setAmplitudes( 1.0f, 0.0f );
+			m_AudioTracks.push_back( trackR );
+			AudioTrack& trackRRef = m_AudioTracks[m_AudioTracks.size() - 1];
+			if ( ! isOneshot ) trackRRef.setLoopLength( m_CurrentMaxLoopCount );
+			trackRRef.setAmplitudes( 0.0f, 1.0f );
+		}
+
+		IMnemonicUiEventListener::PublishEvent(
+				MnemonicUiEvent(UiEventType::SCENE_TRACK_FILE_LOADED, nullptr, 0, 0, cellX, cellY) );
+
+		return true;
+	}
+
+	return false;
+}
+
+bool MnemonicAudioManager::loadMidiFileHelper (const std::string& filename, unsigned int cellX, unsigned int cellY)
+{
+	if ( ! this->goToDirectory(Directory::MIDI) ) return false;
+
+	unsigned int index = 0;
+	for ( const Fat16Entry* entry : m_FileManager.getCurrentDirectoryEntries() )
+	{
+		std::string filenameUppercaseExt = filename;
+		std::string filenameLowercaseExt = filename;
+		filenameUppercaseExt.replace( filenameUppercaseExt.find(".") + 1, 3, "smf" );
+		filenameLowercaseExt.replace( filenameLowercaseExt.find(".") + 1, 3, "SMF" );
+		if ( strcmp(entry->getFilenameDisplay(), filenameUppercaseExt.c_str()) == 0
+			|| strcmp(entry->getFilenameDisplay(), filenameLowercaseExt.c_str()) == 0 )
+		{
+			return this->loadMidiFileHelper( index, cellX, cellY );
+		}
+
+		index++;
+	}
+
+	return false;
+}
+
+bool MnemonicAudioManager::loadMidiFileHelper (unsigned int index, unsigned int cellX, unsigned int cellY)
+{
+	if ( ! this->goToDirectory(Directory::MIDI) ) return false;
+
+	Fat16Entry entry = *m_FileManager.getCurrentDirectoryEntries()[index];
+
+	if ( ! entry.isDeletedEntry() && (strncmp(entry.getExtensionRaw(), "smf", FAT16_EXTENSION_SIZE) == 0
+		|| strncmp(entry.getExtensionRaw(), "SMF", FAT16_EXTENSION_SIZE) == 0) )
+	{
+		m_FileManager.readEntry( entry );
+
+		// load header info
+		SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( entry );
+		unsigned int lenMd = 0;
+		unsigned int lenBk = 0;
+		lenMd = data[0] | data[1] << 1 | data[2] << 2 | data[3] << 3;
+		lenBk = data[4] | data[5] << 1 | data[6] << 2 | data[7] << 3;
+
+		// load midi track events
+		uint8_t* midiTrackEventPrimArr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( lenMd * sizeof(MidiTrackEvent) );
+		unsigned int midiTrackEventPrimArrIndex = 0;
+		unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
+		while ( entry.getFileTransferInProgressFlagRef() )
+		{
+			data = m_FileManager.getSelectedFileNextSector( entry );
+
+			for ( unsigned int blockIndex = 0;
+					blockIndex < sectorSizeInBytes && midiTrackEventPrimArrIndex < (lenMd * sizeof(MidiTrackEvent));
+						blockIndex++ )
+			{
+				midiTrackEventPrimArr[midiTrackEventPrimArrIndex] = data[blockIndex];
+				midiTrackEventPrimArrIndex++;
+			}
+		}
+
+		// create midi track and push to midi tracks vector
+		MidiTrackEvent* midiTrackEvents = reinterpret_cast<MidiTrackEvent*>( midiTrackEventPrimArr );
+		MidiTrack midiTrack( cellX, cellY, midiTrackEvents, lenMd, lenBk, m_AxiSramAllocator, true, entry.getFilenameDisplay() );
+		m_MidiTracks.push_back( midiTrack );
+
+		// deallocate the primitive array
+		m_AxiSramAllocator.free( midiTrackEventPrimArr );
+
+		IMnemonicUiEventListener::PublishEvent(
+				MnemonicUiEvent(UiEventType::SCENE_TRACK_FILE_LOADED, nullptr, 0, 0, cellX, cellY) );
+
+		return true;
+	}
+
+	return false;
 }

@@ -18,9 +18,11 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_Font( nullptr ),
 	m_AudioFileEntries(),
 	m_MidiFileEntries(),
+	m_SceneFileEntries(),
 	m_FileEntriesToUse( &m_AudioFileEntries ),
 	m_AudioFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_MidiFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
+	m_SceneFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_MenuModelToUse( &m_AudioFileMenuModel ),
 	m_StringEditModel(),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
@@ -442,9 +444,36 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 			// for now only use for loading and saving scenes, maybe in the future scrub audio and midi tracks to this time code?
 			if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
 			{
+				// first unload the currently used cells
+				for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
+				{
+					for ( unsigned int y = 0; y < MNEMONIC_NEOTRELLIS_ROWS; y++ )
+					{
+						CELL_STATE state = m_CellStates[x][y];
+						if ( state == CELL_STATE::NOT_PLAYING
+								|| state == CELL_STATE::PLAYING )
+						{
+							this->setCellStateAndColor( x, y, CELL_STATE::INACTIVE );
+							IMnemonicParameterEventListener::PublishEvent(
+									MnemonicParameterEvent(x, y, 0,
+										static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+						}
+						else if ( state == CELL_STATE::RECORDING
+								|| state == CELL_STATE::LOADING	)
+						{
+							// TODO probably should display something to the user
+							return;
+						}
+					}
+				}
+
+				m_CachedCell.x = keyX;
+				m_CachedCell.y = keyY;
+
+				// then signal to load the scene
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, 0,
-							static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
+							static_cast<unsigned int>(PARAM_CHANNEL::LOAD_SCENE)) );
 			}
 			else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
 			{
@@ -466,7 +495,7 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				m_CachedCell.y = keyY;
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, 0,
-							static_cast<unsigned int>(PARAM_CHANNEL::ENTER_FILE_EXPLORER)) );
+							static_cast<unsigned int>(PARAM_CHANNEL::LOAD_AUDIO_RECORDING)) );
 			}
 			else if ( cellState == CELL_STATE::NOT_PLAYING )
 			{
@@ -630,6 +659,11 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 				m_MenuModelToUse = &m_MidiFileMenuModel;
 				m_FileEntriesToUse = &m_MidiFileEntries;
 			}
+			else if ( event.getChannel() == 2 ) // entering with scene files
+			{
+				m_MenuModelToUse = &m_SceneFileMenuModel;
+				m_FileEntriesToUse = &m_SceneFileEntries;
+			}
 
 
 			// enter file explorer page and display list of options
@@ -707,6 +741,10 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			}
 
 			this->draw();
+
+			break;
+		case UiEventType::SCENE_TRACK_FILE_LOADED:
+			this->setCellStateAndColor( event.getCellX(), event.getCellY(), CELL_STATE::NOT_PLAYING );
 
 			break;
 		default:

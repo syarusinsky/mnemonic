@@ -21,7 +21,8 @@ enum class UiEventType : unsigned int
 	MIDI_TRACK_FINISHED,
 	MIDI_TRACK_RECORDING_STATUS,
 	MIDI_TRACK_NOT_SAVED, // for when unable to save a scene because MIDI track isn't saved
-	SCENE_SAVING_STATUS
+	SCENE_SAVING_STATUS,
+	SCENE_TRACK_FILE_LOADED // for when an audio file or midi file are loaded from a scene file
 };
 
 struct UiFileExplorerEntry
