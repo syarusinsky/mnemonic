@@ -26,9 +26,10 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_MenuModelToUse( &m_AudioFileMenuModel ),
 	m_StringEditModel(),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
+	m_ActiveMidiChannel( 1 ),
 	m_CachedCell(),
 	m_CellStates{},
-	m_Effect1PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
+	m_Effect1PotCurrentParam( PARAM_CHANNEL::ACTIVE_MIDI_CHANNEL ),
 	m_Effect2PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect3PotCurrentParam( PARAM_CHANNEL::NULL_PARAM ),
 	m_Effect1PotCached( 0.0f ),
@@ -237,6 +238,40 @@ void MnemonicUiManager::sendParamEventFromEffectPot (PARAM_CHANNEL param, float 
 {
 	switch ( param )
 	{
+		case PARAM_CHANNEL::ACTIVE_MIDI_CHANNEL:
+		{
+			bool changed = false;
+
+			if ( val < 0.25f && m_ActiveMidiChannel != 1 ) // midi active channel 1
+			{
+				m_ActiveMidiChannel = 1;
+				changed = true;
+			}
+			else if ( val >= 0.25f && val < 0.5f && m_ActiveMidiChannel != 2 ) // midi active channel 2
+			{
+				m_ActiveMidiChannel = 2;
+				changed = true;
+			}
+			else if ( val >= 0.5f && val < 0.75f && m_ActiveMidiChannel != 3 ) // midi active channel 3
+			{
+				m_ActiveMidiChannel = 3;
+				changed = true;
+			}
+			else if ( val >= 0.75f && m_ActiveMidiChannel != 4 )// midi active channel 4
+			{
+				m_ActiveMidiChannel = 4;
+				changed = true;
+			}
+
+			if ( changed )
+			{
+				// TODO update ui
+				IMnemonicParameterEventListener::PublishEvent(
+					MnemonicParameterEvent(0, 0, m_ActiveMidiChannel, static_cast<unsigned int>(param)) );
+			}
+		}
+
+			break;
 		default:
 			break;
 	}

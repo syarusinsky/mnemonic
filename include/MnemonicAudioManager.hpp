@@ -66,6 +66,8 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 		unsigned int 			m_MasterClockCount;
 		unsigned int 			m_CurrentMaxLoopCount; // master clock resets after reaching this amount
 
+		unsigned int 			m_ActiveMidiChannel;
+
 		std::vector<MidiTrack> 		m_MidiTracks;
 
 		std::vector<MidiEvent> 		m_MidiEventsToSend; // a vector of all midi events at a time code to be sent over usart

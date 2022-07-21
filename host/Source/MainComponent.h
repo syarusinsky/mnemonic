@@ -164,7 +164,10 @@ class MainComponent   : public juce::AudioAppComponent, public juce::Slider::Lis
 		MidiHandler midiHandlerFakeSynth;
 		int lastInputIndex;
 		::AudioBuffer<int16_t, true> sAudioBuffer;
-		FakeSynth fakeSynth;
+		FakeSynth fakeSynth1;
+		FakeSynth fakeSynth2;
+		FakeSynth fakeSynth3;
+		FakeSynth fakeSynth4;
 
 		uint8_t fakeAxiSram[524288]; // 512kB
 

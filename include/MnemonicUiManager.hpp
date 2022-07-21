@@ -93,6 +93,9 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		// the current menu the ui is on
 		MNEMONIC_MENUS 				m_CurrentMenu;
 
+		// the current channel the midi input will be controlling
+		unsigned int 				m_ActiveMidiChannel;
+
 		// the cached cell being acted upon (whether that's through file assignment, midi recording, ect)
 		CellPos 				m_CachedCell;
 

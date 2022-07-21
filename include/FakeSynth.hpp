@@ -14,8 +14,10 @@
 class FakeSynth : public IBufferCallback<int16_t, true>, public IKeyEventListener
 {
 	public:
-		FakeSynth();
+		FakeSynth (unsigned int midiChannel);
 		~FakeSynth() override;
+
+		void setOscillatorMode (const OscillatorMode& oscMode);
 
 		void call (int16_t* writeBufferL, int16_t* writeBufferR) override;
 
@@ -24,6 +26,8 @@ class FakeSynth : public IBufferCallback<int16_t, true>, public IKeyEventListene
 	private:
 		float 		m_Amplitude;
 		PolyBLEPOsc 	m_Osc;
+
+		unsigned int 	m_MidiChannel;
 };
 
 #endif // FAKESYNTH_HPP

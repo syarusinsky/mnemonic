@@ -36,7 +36,10 @@ MainComponent::MainComponent() :
 	midiHandlerFakeSynth(),
 	lastInputIndex( 0 ),
 	sAudioBuffer(),
-	fakeSynth(),
+	fakeSynth1( 1 ),
+	fakeSynth2( 2 ),
+	fakeSynth3( 3 ),
+	fakeSynth4( 4 ),
 	fakeAxiSram{ 0 },
 	sdCard( "SDCard.img" ),
 	audioManager( sdCard, fakeAxiSram, sizeof(fakeAxiSram) ),
@@ -72,7 +75,16 @@ MainComponent::MainComponent() :
 	uiManager.bindToPotEventSystem();
 	uiManager.bindToButtonEventSystem();
 	uiManager.bindToMnemonicUiEventSystem();
-	fakeSynth.bindToKeyEventSystem();
+	fakeSynth1.bindToKeyEventSystem();
+	fakeSynth2.bindToKeyEventSystem();
+	fakeSynth3.bindToKeyEventSystem();
+	fakeSynth4.bindToKeyEventSystem();
+
+	// setting different waveforms for fake synths
+	fakeSynth1.setOscillatorMode( OscillatorMode::SINE );
+	fakeSynth2.setOscillatorMode( OscillatorMode::TRIANGLE );
+	fakeSynth3.setOscillatorMode( OscillatorMode::SQUARE );
+	fakeSynth4.setOscillatorMode( OscillatorMode::SAWTOOTH );
 
 	// load font and logo from file
 	char* fontBytes = new char[FONT_FILE_SIZE];
@@ -134,7 +146,10 @@ MainComponent::MainComponent() :
 	}
 
 	// connecting the audio buffer to the voice manager
-	sAudioBuffer.registerCallback( &fakeSynth );
+	sAudioBuffer.registerCallback( &fakeSynth1 );
+	sAudioBuffer.registerCallback( &fakeSynth2 );
+	sAudioBuffer.registerCallback( &fakeSynth3 );
+	sAudioBuffer.registerCallback( &fakeSynth4 );
 	sAudioBuffer.registerCallback( &audioManager );
 
 	// juce audio device setup
@@ -466,20 +481,20 @@ void MainComponent::buttonStateChanged (juce::Button* button)
 				for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
 				{
 					if ( button == &fakeNeotrellisButtons[row][col]
-					  	&& (
-						  	(keyPressedArr[row][col] == true && (button->getState() == buttonOver
-											     || button->getState() == buttonNorm))
-							|| button->getState() == buttonDown )
+							&& (
+								(keyPressedArr[row][col] == true && (button->getState() == buttonOver
+												     || button->getState() == buttonNorm))
+								|| button->getState() == buttonDown )
 					   )
 					{
 						keyPressedArr[row][col] = button->isDown();
 						fakeNeotrellis.addCellEvent( FakeNeotrellis::CellEvent{ static_cast<uint8_t>(col),
-												static_cast<uint8_t>(row), ! button->isDown()} );
+								static_cast<uint8_t>(row), ! button->isDown()} );
 					}
 				}
 			}
 		}
-
+		
 		fakeNeotrellis.pollForEvents();
 	}
 	catch (std::exception& e)

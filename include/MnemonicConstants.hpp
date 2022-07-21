@@ -53,7 +53,8 @@ enum class PARAM_CHANNEL : unsigned int
 	SAVE_MIDI_RECORDING,
 	LOAD_MIDI_RECORDING,
 	SAVE_SCENE,
-	LOAD_SCENE
+	LOAD_SCENE,
+	ACTIVE_MIDI_CHANNEL
 };
 
 enum class POT_CHANNEL : unsigned int

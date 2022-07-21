@@ -15,6 +15,7 @@ MnemonicAudioManager::MnemonicAudioManager (IStorageMedia& sdCard, uint8_t* axiS
 	m_DecompressedBuffer( m_AxiSramAllocator.allocatePrimativeArray<uint16_t>(ABUFFER_SIZE) ),
 	m_MasterClockCount( 0 ),
 	m_CurrentMaxLoopCount( MNEMONIC_NEOTRELLIS_COLS ), // 8 to avoid arithmetic exception when performing modulo
+	m_ActiveMidiChannel( 1 ),
 	m_MidiTracks(),
 	m_MidiEventsToSend(),
 	m_RecordingMidiState( MidiRecordingState::NOT_RECORDING ),
@@ -145,19 +146,24 @@ void MnemonicAudioManager::call (int16_t* writeBufferL, int16_t* writeBufferR)
 
 void MnemonicAudioManager::onMidiEvent (const MidiEvent& midiEvent)
 {
+	// TODO need to make this part of the class
+	unsigned int midiChannel = m_ActiveMidiChannel;
+	MidiEvent midiEventWithChannel = midiEvent;
+	midiEventWithChannel.setChannel( midiChannel );
+
 	// TODO probably need to keep track of what midi messages have a note on without a note off, to apply those at the end of the loop
 	if ( m_RecordingMidiState == MidiRecordingState::RECORDING && m_TempMidiTrackEventsIndex < MNEMONIC_MAX_MIDI_TRACK_EVENTS )
 	{
-		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent = midiEvent;
+		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_MidiEvent = midiEventWithChannel;
 		m_TempMidiTrackEvents[m_TempMidiTrackEventsIndex].m_TimeCode = m_MasterClockCount;
 
 		m_TempMidiTrackEventsIndex++;
 
-		m_MidiEventsToSend.push_back( midiEvent );
+		m_MidiEventsToSend.push_back( midiEventWithChannel );
 	}
 	else
 	{
-		m_MidiEventsToSend.push_back( midiEvent );
+		m_MidiEventsToSend.push_back( midiEventWithChannel );
 	}
 }
 
@@ -421,6 +427,10 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			break;
 		case PARAM_CHANNEL::LOAD_SCENE:
 			this->enterFileExplorer( Directory::SCENE );
+
+			break;
+		case PARAM_CHANNEL::ACTIVE_MIDI_CHANNEL:
+			m_ActiveMidiChannel = paramEvent.getValue();
 
 			break;
 		default:
