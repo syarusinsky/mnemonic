@@ -88,6 +88,7 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		void loadFile (unsigned int cellX, unsigned int cellY, unsigned int index);
 		void unloadFile (unsigned int cellX, unsigned int cellY);
+		void deleteFile (unsigned int index); // actually deletes a file from the file system
 
 		void startRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
 		void endRecordingMidiTrack (unsigned int cellX, unsigned int cellY);
@@ -95,7 +96,7 @@ class MnemonicAudioManager : public IBufferCallback<int16_t, true>, public IMnem
 
 		void saveScene (const char* nameWithoutExt);
 
-		uint8_t* enterFileExplorerHelper (const char* extension, unsigned int& numEntries);
+		uint8_t* enterFileExplorerHelper (const char* extension, unsigned int& numEntries, uint8_t* previousPtr);
 		void enterFileExplorer (const Directory& dir);
 
 		bool loadSceneFileHelper (const std::string& versionStr, std::string& sceneStr);

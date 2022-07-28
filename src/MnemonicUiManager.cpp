@@ -1,9 +1,11 @@
 #include "MnemonicUiManager.hpp"
 
+#include <cstring>
 #include "Graphics.hpp"
 #include "IMnemonicParameterEventListener.hpp"
 #include "IMnemonicLCDRefreshEventListener.hpp"
 #include "Font.hpp"
+#include "mnemonic.h"
 
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
@@ -15,6 +17,7 @@ void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInter
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format, NeotrellisInterface* const neotrellis) :
 	Surface( width, height, format ),
 	m_Neotrellis( neotrellis ),
+	m_MainImage( mnemonic_data ),
 	m_Font( nullptr ),
 	m_AudioFileEntries(),
 	m_MidiFileEntries(),
@@ -24,6 +27,8 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	m_MidiFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_SceneFileMenuModel( SETTINGS_NUM_VISIBLE_ENTRIES ),
 	m_MenuModelToUse( &m_AudioFileMenuModel ),
+	m_FileDeleteMode( false ),
+	m_FileIndexToDelete( 0 ),
 	m_StringEditModel(),
 	m_CurrentMenu( MNEMONIC_MENUS::STATUS ),
 	m_ActiveMidiChannel( 1 ),
@@ -79,12 +84,50 @@ void MnemonicUiManager::draw()
 {
 	if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
-		// TODO need a proper status function screen
 		m_Graphics->setColor( false );
 		m_Graphics->fill();
 
 		m_Graphics->setColor( true );
-		m_Graphics->drawText( 0.3f, 0.4f, "STATUS", 1.0f );
+		m_Graphics->drawSprite( 0.0f, 0.0f, m_MainImage );
+
+		if ( (m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD)
+				&& (m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD) )
+		{
+			m_Graphics->drawText( 0.075f, 0.28f, "SCENE:", 1.0f );
+			m_Graphics->drawText( 0.075f, 0.39f, "DELETE", 1.0f );
+			m_Graphics->drawText( 0.075f, 0.5f, "AUDIO:", 1.0f );
+			m_Graphics->drawText( 0.075f, 0.62f, "DELETE", 1.0f );
+			m_Graphics->drawText( 0.12f, 0.75f, "MIDI:", 1.0f );
+			m_Graphics->drawText( 0.075f, 0.88f, "DELETE", 1.0f );
+		}
+		else if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+		{
+			m_Graphics->drawText( 0.075f, 0.28f, "SCENE:", 1.0f );
+			m_Graphics->drawText( 0.135f, 0.39f, "LOAD", 1.0f );
+			m_Graphics->drawText( 0.075f, 0.5f, "AUDIO:", 1.0f );
+			m_Graphics->drawText( 0.075f, 0.62f, "REMOVE", 1.0f );
+			m_Graphics->drawText( 0.12f, 0.75f, "MIDI:", 1.0f );
+			m_Graphics->drawText( 0.02f, 0.88f, "LOAD/REM", 1.0f );
+		}
+		else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
+		{
+			m_Graphics->drawText( 0.075f, 0.28f, "SCENE:", 1.0f );
+			m_Graphics->drawText( 0.135f, 0.39f, "SAVE", 1.0f );
+			m_Graphics->drawText( 0.12f, 0.75f, "MIDI:", 1.0f );
+			m_Graphics->drawText( 0.135f, 0.88f, "SAVE", 1.0f );
+		}
+		else
+		{
+			m_Graphics->drawText( 0.075f, 0.35f, "ACTIVE", 1.0f );
+			m_Graphics->drawText( 0.135f, 0.5f, "MIDI", 1.0f );
+			m_Graphics->drawText( 0.065f, 0.65f, "CHANNEL", 1.0f );
+			m_Graphics->drawBoxFilled( 0.21f, 0.8f, 0.28f, 0.92f );
+			m_Graphics->setColor( false );
+			char activeChanStr[2] = { 'a', '\0' };
+			sprintf( activeChanStr, "%d", m_ActiveMidiChannel );
+			m_Graphics->drawText( 0.22f, 0.82f, activeChanStr, 1.0f );
+
+		}
 
 		IMnemonicLCDRefreshEventListener::PublishEvent(
 				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
@@ -99,6 +142,10 @@ void MnemonicUiManager::draw()
 		m_Graphics->fill();
 
 		m_Graphics->setColor( true );
+		m_Graphics->drawText( 0.0f, 0.1f, "PRESS CELL TO SAVE", 1.0f );
+		m_Graphics->drawText( 0.1f, 0.73f, "EMPTY STRING TO", 1.0f );
+		m_Graphics->drawText( 0.35f, 0.88f, "CANCEL", 1.0f );
+
 		const char* string = m_StringEditModel.getString();
 		m_Graphics->drawText( 0.3f, 0.4f, string, 1.0f );
 		const unsigned int cursorPos = m_StringEditModel.getCursorPos();
@@ -138,6 +185,20 @@ void MnemonicUiManager::draw()
 
 		m_Graphics->setColor( true );
 		m_Graphics->drawText( 0.05f, 0.4f, "SAVING FAILED", 1.0f );
+
+		IMnemonicLCDRefreshEventListener::PublishEvent(
+				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
+	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::CONFIRM_DELETE )
+	{
+		m_Graphics->setColor( false );
+		m_Graphics->fill();
+
+		m_Graphics->setColor( true );
+		m_Graphics->drawText( 0.17f, 0.3f, "DELETE FILE?", 1.0f );
+		m_Graphics->drawLine( 0.17f, 0.4f, 0.8f, 0.4f );
+		m_Graphics->drawText( 0.25f, 0.55f, "BTN 1 YES", 1.0f );
+		m_Graphics->drawText( 0.25f, 0.7f, "BTN 2  NO", 1.0f );
 
 		IMnemonicLCDRefreshEventListener::PublishEvent(
 				MnemonicLCDRefreshEvent(0, 0, this->getFrameBuffer()->getWidth(), this->getFrameBuffer()->getHeight(), 0) );
@@ -265,7 +326,10 @@ void MnemonicUiManager::sendParamEventFromEffectPot (PARAM_CHANNEL param, float 
 
 			if ( changed )
 			{
-				// TODO update ui
+				if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS )
+				{
+					this->draw();
+				}
 				IMnemonicParameterEventListener::PublishEvent(
 					MnemonicParameterEvent(0, 0, m_ActiveMidiChannel, static_cast<unsigned int>(param)) );
 			}
@@ -360,8 +424,13 @@ void MnemonicUiManager::onButtonEvent (const ButtonEvent& buttonEvent)
 	static bool ignoreNextReleaseEffect1 = false;
 	static bool ignoreNextReleaseEffect2 = false;
 
-	if ( buttonEvent.getButtonState() == BUTTON_STATE::RELEASED )
+	if ( buttonEvent.getButtonState() == BUTTON_STATE::PRESSED )
 	{
+		if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS ) this->draw(); // to update help messages
+	}
+	else if ( buttonEvent.getButtonState() == BUTTON_STATE::RELEASED )
+	{
+		if ( m_CurrentMenu == MNEMONIC_MENUS::STATUS ) this->draw(); // to update help messages
 		if ( buttonEvent.getChannel() == static_cast<unsigned int>(BUTTON_CHANNEL::EFFECT1) )
 		{
 			if ( ignoreNextReleaseEffect1 )
@@ -419,6 +488,15 @@ void MnemonicUiManager::handleEffect1SinglePress()
 		m_StringEditModel.cursorPrev();
 		this->draw();
 	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::CONFIRM_DELETE )
+	{
+		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+		this->draw();
+
+		IMnemonicParameterEventListener::PublishEvent(
+				MnemonicParameterEvent(m_CachedCell.x, m_CachedCell.y, m_FileIndexToDelete,
+					static_cast<unsigned int>(PARAM_CHANNEL::CONFIRM_DELETE_FILE)) );
+	}
 }
 
 void MnemonicUiManager::handleEffect2SinglePress()
@@ -437,6 +515,11 @@ void MnemonicUiManager::handleEffect2SinglePress()
 		m_StringEditModel.cursorNext();
 		this->draw();
 	}
+	else if ( m_CurrentMenu == MNEMONIC_MENUS::CONFIRM_DELETE )
+	{
+		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+		this->draw();
+	}
 }
 
 void MnemonicUiManager::handleDoubleButtonPress()
@@ -447,18 +530,37 @@ void MnemonicUiManager::handleDoubleButtonPress()
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::FILE_EXPLORER )
 	{
-		// set cell states corrrectly
-		this->setCellStateAndColor( m_CachedCell.x, m_CachedCell.y, CELL_STATE::NOT_PLAYING );
+		// since accessing the file deletion menu is done with a double press, the first double press release will be unintended so we ignore it
+		static bool ignoreNextDoublePress = true;
+		if ( ! m_FileDeleteMode ) // loading a file
+		{
+			// set cell states corrrectly
+			this->setCellStateAndColor( m_CachedCell.x, m_CachedCell.y, CELL_STATE::NOT_PLAYING );
 
-		// select file in file explorer
-		unsigned int index = (*m_FileEntriesToUse)[m_MenuModelToUse->getEntryIndex()].m_Index;
-		IMnemonicParameterEventListener::PublishEvent(
-				MnemonicParameterEvent(m_CachedCell.x, m_CachedCell.y, index,
-					static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
+			// select file in file explorer
+			unsigned int index = (*m_FileEntriesToUse)[m_MenuModelToUse->getEntryIndex()].m_Index;
+			IMnemonicParameterEventListener::PublishEvent(
+					MnemonicParameterEvent(m_CachedCell.x, m_CachedCell.y, index,
+						static_cast<unsigned int>(PARAM_CHANNEL::LOAD_FILE)) );
 
-		// return to status menu
-		m_CurrentMenu = MNEMONIC_MENUS::STATUS;
-		this->draw();
+			// return to status menu
+			m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+			this->draw();
+		}
+		else if ( ! ignoreNextDoublePress ) // deleting a file
+		{
+			m_FileIndexToDelete = (*m_FileEntriesToUse)[m_MenuModelToUse->getEntryIndex()].m_Index;
+			m_FileDeleteMode = false;
+
+			m_CurrentMenu = MNEMONIC_MENUS::CONFIRM_DELETE;
+			this->draw();
+
+			ignoreNextDoublePress = true;
+		}
+		else // just handling the ignore
+		{
+			ignoreNextDoublePress = false;
+		}
 	}
 	else if ( m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
 	{
@@ -476,8 +578,16 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 
 		if ( row == MNEMONIC_ROW::TRANSPORT )
 		{
-			// for now only use for loading and saving scenes, maybe in the future scrub audio and midi tracks to this time code?
-			if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+			// for now only use for loading, saving, and deleteing scenes, maybe in the future scrub audio and midi tracks to this time code?
+			if ( (m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD)
+					&& (m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD) )
+			{
+				m_FileDeleteMode = true;
+				IMnemonicParameterEventListener::PublishEvent(
+						MnemonicParameterEvent(keyX, keyY, 0,
+							static_cast<unsigned int>(PARAM_CHANNEL::DELETE_FILE)) );
+			}
+			else if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
 			{
 				// first unload the currently used cells
 				for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
@@ -522,39 +632,50 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 		}
 		else if ( (row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS) )
 		{
-			if ( cellState == CELL_STATE::INACTIVE )
+			if ( (m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD)
+					&& (m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD) )
 			{
-				// if inactive, enter file explorer to load a file
-				this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
-				m_CachedCell.x = keyX;
-				m_CachedCell.y = keyY;
+				m_FileDeleteMode = true;
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, 0,
-							static_cast<unsigned int>(PARAM_CHANNEL::LOAD_AUDIO_RECORDING)) );
+							static_cast<unsigned int>(PARAM_CHANNEL::DELETE_FILE)) );
 			}
-			else if ( cellState == CELL_STATE::NOT_PLAYING )
+			else
 			{
-				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+				if ( cellState == CELL_STATE::INACTIVE )
 				{
-					this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+					// if inactive, enter file explorer to load a file
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
+					m_CachedCell.x = keyX;
+					m_CachedCell.y = keyY;
 					IMnemonicParameterEventListener::PublishEvent(
 							MnemonicParameterEvent(keyX, keyY, 0,
-								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+								static_cast<unsigned int>(PARAM_CHANNEL::LOAD_AUDIO_RECORDING)) );
 				}
-				else
+				else if ( cellState == CELL_STATE::NOT_PLAYING )
 				{
-					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+					if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, 0,
+									static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+					}
+					else
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+									static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
+					}
+				}
+				else if ( cellState == CELL_STATE::PLAYING )
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
 					IMnemonicParameterEventListener::PublishEvent(
-							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
 								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 				}
-			}
-			else if ( cellState == CELL_STATE::PLAYING )
-			{
-				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
-				IMnemonicParameterEventListener::PublishEvent(
-						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
-							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 			}
 		}
 		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS
@@ -562,87 +683,106 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
-			if ( cellState == CELL_STATE::INACTIVE )
+			if ( (m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD)
+					&& (m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD) )
 			{
-				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
-				{
-					// first ensure no recording is taking place
-					bool noRecordingHappening = true;
-					for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
-					{
-						for ( unsigned int y = static_cast<unsigned int>(MNEMONIC_ROW::MIDI_CHAN_1_LOOPS);
-								y < MNEMONIC_NEOTRELLIS_ROWS; y++ )
-						{
-							if ( m_CellStates[x][y] == CELL_STATE::RECORDING )
-							{
-								noRecordingHappening = false;
-							}
-						}
-					}
-
-					if ( noRecordingHappening )
-					{
-						this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
-						m_CachedCell.x = keyX;
-						m_CachedCell.y = keyY;
-						IMnemonicParameterEventListener::PublishEvent(
-								MnemonicParameterEvent(keyX, keyY, 0,
-									static_cast<unsigned int>(PARAM_CHANNEL::LOAD_MIDI_RECORDING)) );
-					}
-				}
-				else
-				{
-					this->setCellStateAndColor( keyX, keyY, CELL_STATE::RECORDING );
-					IMnemonicParameterEventListener::PublishEvent(
-							MnemonicParameterEvent(keyX, keyY, 0,
-								static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
-				}
-			}
-			else if ( cellState == CELL_STATE::RECORDING )
-			{
-				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
+				m_FileDeleteMode = true;
 				IMnemonicParameterEventListener::PublishEvent(
 						MnemonicParameterEvent(keyX, keyY, 0,
-							static_cast<unsigned int>(PARAM_CHANNEL::END_MIDI_RECORDING)) );
+							static_cast<unsigned int>(PARAM_CHANNEL::DELETE_FILE)) );
 			}
-			else if ( cellState == CELL_STATE::NOT_PLAYING )
+			else
 			{
-				if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+				if ( cellState == CELL_STATE::INACTIVE )
 				{
-					this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+					if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+					{
+						// first ensure no recording is taking place
+						bool noRecordingHappening = true;
+						for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
+						{
+							for ( unsigned int y = static_cast<unsigned int>(MNEMONIC_ROW::MIDI_CHAN_1_LOOPS);
+									y < MNEMONIC_NEOTRELLIS_ROWS; y++ )
+							{
+								if ( m_CellStates[x][y] == CELL_STATE::RECORDING )
+								{
+									noRecordingHappening = false;
+								}
+							}
+						}
+
+						if ( noRecordingHappening )
+						{
+							this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
+							m_CachedCell.x = keyX;
+							m_CachedCell.y = keyY;
+							IMnemonicParameterEventListener::PublishEvent(
+									MnemonicParameterEvent(keyX, keyY, 0,
+										static_cast<unsigned int>(PARAM_CHANNEL::LOAD_MIDI_RECORDING)) );
+						}
+					}
+					else
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::RECORDING );
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, 0,
+									static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
+					}
+				}
+				else if ( cellState == CELL_STATE::RECORDING )
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
 					IMnemonicParameterEventListener::PublishEvent(
 							MnemonicParameterEvent(keyX, keyY, 0,
-								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+								static_cast<unsigned int>(PARAM_CHANNEL::END_MIDI_RECORDING)) );
 				}
-				else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
+				else if ( cellState == CELL_STATE::NOT_PLAYING )
 				{
-					// move to string edit menu
-					m_StringEditModel.setString( "        " );
-					m_CurrentMenu = MNEMONIC_MENUS::STRING_EDIT;
-					m_CachedCell.x = keyX;
-					m_CachedCell.y = keyY;
-					this->draw();
+					if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, 0,
+									static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+					}
+					else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
+					{
+						// move to string edit menu
+						m_StringEditModel.setString( "        " );
+						m_CurrentMenu = MNEMONIC_MENUS::STRING_EDIT;
+						m_CachedCell.x = keyX;
+						m_CachedCell.y = keyY;
+						this->draw();
+					}
+					else
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+									static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
+					}
 				}
-				else
+				else if ( cellState == CELL_STATE::PLAYING )
 				{
-					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
 					IMnemonicParameterEventListener::PublishEvent(
-							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
 								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 				}
-			}
-			else if ( cellState == CELL_STATE::PLAYING )
-			{
-				this->setCellStateAndColor( keyX, keyY, CELL_STATE::NOT_PLAYING );
-				IMnemonicParameterEventListener::PublishEvent(
-						MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(false),
-							static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 			}
 		}
 	}
 	else if ( keyReleased && m_CurrentMenu == MNEMONIC_MENUS::STRING_EDIT )
 	{
 		const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( m_CachedCell.y );
+
+		// treat empty string as a cancel
+		if ( strcmp(m_StringEditModel.getString(), "        ") == 0 )
+		{
+			m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+			this->draw();
+			return;
+		}
 
 		if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
@@ -702,14 +842,13 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 
 
 			// enter file explorer page and display list of options
-			if ( m_FileEntriesToUse->empty() )
+			m_FileEntriesToUse->clear();
+			m_MenuModelToUse->clearEntries();
+			UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
+			for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
 			{
-				UiFileExplorerEntry* entries = reinterpret_cast<UiFileExplorerEntry*>( event.getDataPtr() );
-				for ( unsigned int entryNum = 0; entryNum < event.getDataNumElements(); entryNum++ )
-				{
-					m_FileEntriesToUse->push_back( entries[entryNum] );
-					m_MenuModelToUse->addEntry( (*m_FileEntriesToUse)[entryNum].m_FilenameDisplay );
-				}
+				m_FileEntriesToUse->push_back( entries[entryNum] );
+				m_MenuModelToUse->addEntry( (*m_FileEntriesToUse)[entryNum].m_FilenameDisplay );
 			}
 
 			// draw the menu with the files

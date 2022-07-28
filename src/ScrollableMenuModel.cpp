@@ -43,6 +43,17 @@ unsigned int ScrollableMenuModel::addEntry (const char* entry, bool tickable)
 	return retVal;
 }
 
+void ScrollableMenuModel::clearEntries()
+{
+	for ( unsigned int entryNum = 0; entryNum < m_TotalEntries; entryNum++ )
+	{
+		delete[] m_Entries[entryNum];
+		m_Entries[entryNum] = nullptr;
+	}
+
+	m_TotalEntries = 0;
+}
+
 char** ScrollableMenuModel::getEntries()
 {
 	return &m_Entries[m_TopVisibleIndex];

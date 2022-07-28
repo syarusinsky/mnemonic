@@ -22,6 +22,7 @@ class ScrollableMenuModel
 		~ScrollableMenuModel();
 
 		unsigned int addEntry (const char* entry, bool tickable = false); // returns the index of given entry, or max uint if invalid
+		void clearEntries();
 
 		char** getEntries(); // returns a pointer to the first visible entry, with the next ones following until null terminated
 

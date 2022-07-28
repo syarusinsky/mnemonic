@@ -4,6 +4,7 @@
               cppLanguageStandard="20">
   <MAINGROUP id="Nwhz3w" name="FMSynth">
     <GROUP id="{98D80E54-6CF9-BEAB-7DA1-8D820991FECF}" name="Source">
+      <FILE id="tGnDhl" name="mnemonic.h" compile="0" resource="0" file="../assets/mnemonic.h"/>
       <FILE id="qbrrWM" name="AudioBuffer.cpp" compile="1" resource="0" file="../lib/SAL/src/AudioBuffer.cpp"/>
       <FILE id="qbrrWM" name="PresetManager.cpp" compile="1" resource="0"
             file="../lib/SAL/src/PresetManager.cpp"/>
@@ -136,7 +137,7 @@
     </GROUP>
   </MAINGROUP>
   <EXPORTFORMATS>
-    <LINUX_MAKE targetFolder="Builds/LinuxMakefile" extraCompilerFlags="-I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -I../../../lib/SFAT/include -DSOFTWARE_RENDERING"
+    <LINUX_MAKE targetFolder="Builds/LinuxMakefile" extraCompilerFlags="-I../../../lib/SAL/include -I../../../include -I../../../lib/SIGL/include -I../../../lib/DevLib/include -I../../../lib/SFAT/include -I../../../assets -DSOFTWARE_RENDERING"
                 extraDefs="DONT_SET_USING_JUCE_NAMESPACE">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug"/>

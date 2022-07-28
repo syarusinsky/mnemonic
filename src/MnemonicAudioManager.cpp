@@ -433,12 +433,35 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			m_ActiveMidiChannel = paramEvent.getValue();
 
 			break;
+		case PARAM_CHANNEL::DELETE_FILE:
+		{
+			const MNEMONIC_ROW row = static_cast<MNEMONIC_ROW>( cellY );
+			if ( row == MNEMONIC_ROW::TRANSPORT )
+			{
+				this->enterFileExplorer( Directory::SCENE );
+			}
+			else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
+			{
+				this->enterFileExplorer( Directory::AUDIO );
+			}
+			else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
+					|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
+			{
+				this->enterFileExplorer( Directory::MIDI );
+			}
+		}
+
+			break;
+		case PARAM_CHANNEL::CONFIRM_DELETE_FILE:
+			this->deleteFile( val );
+
+			break;
 		default:
 			break;
 	}
 }
 
-uint8_t* MnemonicAudioManager::enterFileExplorerHelper (const char* extension, unsigned int& numEntries)
+uint8_t* MnemonicAudioManager::enterFileExplorerHelper (const char* extension, unsigned int& numEntries, uint8_t* previousPtr)
 {
 	// look for extensions both upper and lower case
 	char extensionLowerCase[FAT16_EXTENSION_SIZE + 1];
@@ -469,6 +492,9 @@ uint8_t* MnemonicAudioManager::enterFileExplorerHelper (const char* extension, u
 		index++;
 	}
 
+	// free the previous data if necessary
+	if ( previousPtr ) m_AxiSramAllocator.free( previousPtr );
+
 	// allocate them in contiguous memory for ui use
 	uint8_t* primArrayPtr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( sizeof(UiFileExplorerEntry) * uiEntryVec.size() );
 
@@ -494,21 +520,21 @@ void MnemonicAudioManager::enterFileExplorer (const Directory& dir)
 	static uint8_t* scnPrimArrayPtr = nullptr;
 	static unsigned int scnNumEntries = 0;
 
-	// since the sd card is not hot-pluggable, we only need to get the list of entries once
+	// since the sd card is not hot-pluggable, we only need to get the list of audio entries once
 	if ( dir == Directory::AUDIO && b12PrimArrayPtr == nullptr )
 	{
 		this->goToDirectory( Directory::AUDIO );
-		b12PrimArrayPtr = this->enterFileExplorerHelper( "B12", b12NumEntries );
+		b12PrimArrayPtr = this->enterFileExplorerHelper( "B12", b12NumEntries, b12PrimArrayPtr );
 	}
-	else if ( dir == Directory::MIDI && midPrimArrayPtr == nullptr )
+	else if ( dir == Directory::MIDI )
 	{
 		this->goToDirectory( Directory::MIDI );
-		midPrimArrayPtr = this->enterFileExplorerHelper( "SMF", midNumEntries );
+		midPrimArrayPtr = this->enterFileExplorerHelper( "SMF", midNumEntries, midPrimArrayPtr );
 	}
-	else if ( dir == Directory::SCENE && scnPrimArrayPtr == nullptr )
+	else if ( dir == Directory::SCENE )
 	{
 		this->goToDirectory( Directory::SCENE );
-		scnPrimArrayPtr = this->enterFileExplorerHelper( "SCN", scnNumEntries );
+		scnPrimArrayPtr = this->enterFileExplorerHelper( "SCN", scnNumEntries, scnPrimArrayPtr );
 	}
 
 	// send the ui event with all this data
@@ -715,6 +741,11 @@ void MnemonicAudioManager::unloadFile (unsigned int cellX, unsigned int cellY)
 	}
 }
 
+void MnemonicAudioManager::deleteFile (unsigned int index)
+{
+	m_FileManager.deleteEntry( index );
+}
+
 void MnemonicAudioManager::resetLoopingInfo()
 {
 	// reset looping info if necessary
@@ -789,8 +820,6 @@ Fat16Entry* MnemonicAudioManager::lookForOtherChannel (const char* filenameDispl
 
 bool MnemonicAudioManager::goToDirectory (const Directory& directory)
 {
-	if ( m_CurrentDirectory == directory ) return true;
-
 	if ( m_CurrentDirectory == Directory::AUDIO || m_CurrentDirectory == Directory::MIDI || m_CurrentDirectory == Directory::SCENE )
 	{
 		// go back to root directory

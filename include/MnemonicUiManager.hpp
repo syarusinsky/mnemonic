@@ -22,6 +22,7 @@
 #include "ScrollableMenuModel.hpp"
 #include "StringEditModel.hpp"
 #include "Neotrellis.hpp"
+#include "Sprite.hpp"
 
 enum class MNEMONIC_MENUS
 {
@@ -30,7 +31,8 @@ enum class MNEMONIC_MENUS
 	FILE_EXPLORER,
 	STRING_EDIT,
 	MIDI_RECORDING_FAILED,
-	SCENE_SAVING_FAILED
+	SCENE_SAVING_FAILED,
+	CONFIRM_DELETE
 };
 
 enum class CELL_STATE
@@ -73,6 +75,8 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 	private:
 		NeotrellisInterface* const 		m_Neotrellis;
 
+		// assets
+		Sprite 					m_MainImage;
 		Font* 					m_Font;
 
 		// to store the directory entries for printing
@@ -86,6 +90,10 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 		ScrollableMenuModel 			m_MidiFileMenuModel;
 		ScrollableMenuModel 			m_SceneFileMenuModel;
 		ScrollableMenuModel* 			m_MenuModelToUse;
+
+		// delete mode for deleting files
+		bool 					m_FileDeleteMode;
+		unsigned int 				m_FileIndexToDelete;
 
 		// model for editing of a string
 		StringEditModel 			m_StringEditModel;
