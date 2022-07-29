@@ -640,7 +640,7 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 						MnemonicParameterEvent(keyX, keyY, 0,
 							static_cast<unsigned int>(PARAM_CHANNEL::DELETE_FILE)) );
 			}
-			else
+			else if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
 			{
 				if ( cellState == CELL_STATE::INACTIVE )
 				{
@@ -654,20 +654,21 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				}
 				else if ( cellState == CELL_STATE::NOT_PLAYING )
 				{
-					if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
-					{
-						this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
-						IMnemonicParameterEventListener::PublishEvent(
-								MnemonicParameterEvent(keyX, keyY, 0,
-									static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
-					}
-					else
-					{
-						this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
-						IMnemonicParameterEventListener::PublishEvent(
-								MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
-									static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
-					}
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, 0,
+								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+				}
+			}
+			else if ( ! (m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD
+						|| m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD) )
+			{
+				if ( cellState == CELL_STATE::NOT_PLAYING )
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 				}
 				else if ( cellState == CELL_STATE::PLAYING )
 				{
@@ -691,43 +692,62 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 						MnemonicParameterEvent(keyX, keyY, 0,
 							static_cast<unsigned int>(PARAM_CHANNEL::DELETE_FILE)) );
 			}
+			else if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
+			{
+				if ( cellState == CELL_STATE::INACTIVE )
+				{
+					// first ensure no recording is taking place
+					bool noRecordingHappening = true;
+					for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
+					{
+						for ( unsigned int y = static_cast<unsigned int>(MNEMONIC_ROW::MIDI_CHAN_1_LOOPS);
+								y < MNEMONIC_NEOTRELLIS_ROWS; y++ )
+						{
+							if ( m_CellStates[x][y] == CELL_STATE::RECORDING )
+							{
+								noRecordingHappening = false;
+							}
+						}
+					}
+
+					if ( noRecordingHappening )
+					{
+						this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
+						m_CachedCell.x = keyX;
+						m_CachedCell.y = keyY;
+						IMnemonicParameterEventListener::PublishEvent(
+								MnemonicParameterEvent(keyX, keyY, 0,
+									static_cast<unsigned int>(PARAM_CHANNEL::LOAD_MIDI_RECORDING)) );
+					}
+				}
+				else if ( cellState == CELL_STATE::NOT_PLAYING )
+				{
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, 0,
+								static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
+				}
+			}
+			else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
+			{
+				if ( cellState == CELL_STATE::NOT_PLAYING )
+				{
+					// move to string edit menu
+					m_StringEditModel.setString( "        " );
+					m_CurrentMenu = MNEMONIC_MENUS::STRING_EDIT;
+					m_CachedCell.x = keyX;
+					m_CachedCell.y = keyY;
+					this->draw();
+				}
+			}
 			else
 			{
 				if ( cellState == CELL_STATE::INACTIVE )
 				{
-					if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
-					{
-						// first ensure no recording is taking place
-						bool noRecordingHappening = true;
-						for ( unsigned int x = 0; x < MNEMONIC_NEOTRELLIS_COLS; x++ )
-						{
-							for ( unsigned int y = static_cast<unsigned int>(MNEMONIC_ROW::MIDI_CHAN_1_LOOPS);
-									y < MNEMONIC_NEOTRELLIS_ROWS; y++ )
-							{
-								if ( m_CellStates[x][y] == CELL_STATE::RECORDING )
-								{
-									noRecordingHappening = false;
-								}
-							}
-						}
-
-						if ( noRecordingHappening )
-						{
-							this->setCellStateAndColor( keyX, keyY, CELL_STATE::LOADING );
-							m_CachedCell.x = keyX;
-							m_CachedCell.y = keyY;
-							IMnemonicParameterEventListener::PublishEvent(
-									MnemonicParameterEvent(keyX, keyY, 0,
-										static_cast<unsigned int>(PARAM_CHANNEL::LOAD_MIDI_RECORDING)) );
-						}
-					}
-					else
-					{
-						this->setCellStateAndColor( keyX, keyY, CELL_STATE::RECORDING );
-						IMnemonicParameterEventListener::PublishEvent(
-								MnemonicParameterEvent(keyX, keyY, 0,
-									static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
-					}
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::RECORDING );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, 0,
+								static_cast<unsigned int>(PARAM_CHANNEL::START_MIDI_RECORDING)) );
 				}
 				else if ( cellState == CELL_STATE::RECORDING )
 				{
@@ -738,29 +758,10 @@ void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, boo
 				}
 				else if ( cellState == CELL_STATE::NOT_PLAYING )
 				{
-					if ( m_Effect1BtnState == BUTTON_STATE::PRESSED || m_Effect1BtnState == BUTTON_STATE::HELD )
-					{
-						this->setCellStateAndColor( keyX, keyY, CELL_STATE::INACTIVE );
-						IMnemonicParameterEventListener::PublishEvent(
-								MnemonicParameterEvent(keyX, keyY, 0,
-									static_cast<unsigned int>(PARAM_CHANNEL::UNLOAD_FILE)) );
-					}
-					else if ( m_Effect2BtnState == BUTTON_STATE::PRESSED || m_Effect2BtnState == BUTTON_STATE::HELD )
-					{
-						// move to string edit menu
-						m_StringEditModel.setString( "        " );
-						m_CurrentMenu = MNEMONIC_MENUS::STRING_EDIT;
-						m_CachedCell.x = keyX;
-						m_CachedCell.y = keyY;
-						this->draw();
-					}
-					else
-					{
-						this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
-						IMnemonicParameterEventListener::PublishEvent(
-								MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
-									static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
-					}
+					this->setCellStateAndColor( keyX, keyY, CELL_STATE::PLAYING );
+					IMnemonicParameterEventListener::PublishEvent(
+							MnemonicParameterEvent(keyX, keyY, static_cast<unsigned int>(true),
+								static_cast<unsigned int>(PARAM_CHANNEL::PLAY_OR_STOP_TRACK)) );
 				}
 				else if ( cellState == CELL_STATE::PLAYING )
 				{
@@ -824,6 +825,14 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 			break;
 		case UiEventType::ENTER_FILE_EXPLORER:
 		{
+			// if there are no files to load, return to status
+			if ( event.getDataNumElements() == 0 )
+			{
+				m_CurrentMenu = MNEMONIC_MENUS::STATUS;
+				this->setCellStateAndColor( m_CachedCell.x, m_CachedCell.y, CELL_STATE::INACTIVE );
+				return;
+			}
+
 			if ( event.getChannel() == 0 ) // entering with b12 files
 			{
 				m_MenuModelToUse = &m_AudioFileMenuModel;
@@ -850,6 +859,8 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 				m_FileEntriesToUse->push_back( entries[entryNum] );
 				m_MenuModelToUse->addEntry( (*m_FileEntriesToUse)[entryNum].m_FilenameDisplay );
 			}
+
+			m_MenuModelToUse->returnToTop();
 
 			// draw the menu with the files
 			this->drawScrollableMenu( *m_MenuModelToUse, nullptr, *this );
@@ -1071,4 +1082,17 @@ void MnemonicUiManager::setCellStateAndColor (unsigned int cellX, unsigned int c
 CELL_STATE MnemonicUiManager::getCellState (unsigned int cellX, unsigned int cellY)
 {
 	return m_CellStates[cellX][cellY];
+}
+
+bool MnemonicUiManager::noCellsPlaying()
+{
+	for ( unsigned int row = 0; row < MNEMONIC_NEOTRELLIS_ROWS; row++ )
+	{
+		for ( unsigned int col = 0; col < MNEMONIC_NEOTRELLIS_COLS; col++ )
+		{
+			if ( this->getCellState(row, col) == CELL_STATE::PLAYING ) return false;
+		}
+	}
+
+	return true;
 }

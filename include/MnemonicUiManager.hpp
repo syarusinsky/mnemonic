@@ -164,6 +164,7 @@ class MnemonicUiManager : public Surface, public IPotEventListener, public IButt
 
 		void setCellStateAndColor (unsigned int cellX, unsigned int cellY, const CELL_STATE& state);
 		CELL_STATE getCellState (unsigned int cellX, unsigned int cellY);
+		bool noCellsPlaying();
 };
 
 #endif // MNEMONICUIMANAGER_HPP
