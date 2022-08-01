@@ -95,8 +95,6 @@ void MnemonicUiManager::draw()
 		{
 			m_Graphics->drawText( 0.075f, 0.28f, "SCENE:", 1.0f );
 			m_Graphics->drawText( 0.075f, 0.39f, "DELETE", 1.0f );
-			m_Graphics->drawText( 0.075f, 0.5f, "AUDIO:", 1.0f );
-			m_Graphics->drawText( 0.075f, 0.62f, "DELETE", 1.0f );
 			m_Graphics->drawText( 0.12f, 0.75f, "MIDI:", 1.0f );
 			m_Graphics->drawText( 0.075f, 0.88f, "DELETE", 1.0f );
 		}
@@ -105,7 +103,7 @@ void MnemonicUiManager::draw()
 			m_Graphics->drawText( 0.075f, 0.28f, "SCENE:", 1.0f );
 			m_Graphics->drawText( 0.135f, 0.39f, "LOAD", 1.0f );
 			m_Graphics->drawText( 0.075f, 0.5f, "AUDIO:", 1.0f );
-			m_Graphics->drawText( 0.075f, 0.62f, "REMOVE", 1.0f );
+			m_Graphics->drawText( 0.02f, 0.62f, "LOAD/REM", 1.0f );
 			m_Graphics->drawText( 0.12f, 0.75f, "MIDI:", 1.0f );
 			m_Graphics->drawText( 0.02f, 0.88f, "LOAD/REM", 1.0f );
 		}

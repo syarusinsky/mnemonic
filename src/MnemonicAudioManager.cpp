@@ -442,7 +442,10 @@ void MnemonicAudioManager::onMnemonicParameterEvent (const MnemonicParameterEven
 			}
 			else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 || row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 			{
-				this->enterFileExplorer( Directory::AUDIO );
+				// Not allowing this currently since audio issues would occur if the audio file was currently being played,
+				// this could be fixed in the future but since I'm going to only be adding/removing audio files with a computer
+				// anyways it's not worth the effort
+				// this->enterFileExplorer( Directory::AUDIO );
 			}
 			else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 					|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
