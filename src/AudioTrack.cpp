@@ -23,6 +23,7 @@ AudioTrack::AudioTrack (unsigned int cellX, unsigned int cellY, Fat16FileManager
 	m_AmplitudeL( 1.0f ),
 	m_AmplitudeR( 1.0f ),
 	m_IsLoopable( false ),
+	m_LoopWaitForZero( false ),
 	m_JustFinished( false )
 {
 	for ( int byte = 0; byte < m_B12CircularBufferSize; byte++ )
@@ -151,9 +152,10 @@ void AudioTrack::decompressToBuffer (int16_t* writeBufferL, int16_t* writeBuffer
 	m_B12ReadPos = ( m_B12ReadPos + COMPRESSED_BUFFER_SIZE ) % m_B12CircularBufferSize;
 }
 
-void AudioTrack::setLoopable (const bool isLoopable)
+void AudioTrack::setLoopable (const bool isLoopable, const bool loopWaitForZero)
 {
 	m_IsLoopable = isLoopable;
+	m_LoopWaitForZero = loopWaitForZero;
 }
 
 void AudioTrack::setLoopLength (unsigned int currentMaxLoopLength)
@@ -171,7 +173,16 @@ void AudioTrack::setLoopLength (unsigned int currentMaxLoopLength)
 
 bool AudioTrack::shouldLoop (const unsigned int masterClockCount)
 {
-	if ( masterClockCount % m_LoopLengthInAudioBlocks == 0 && this->isLoopable() )
+	if ( ! m_LoopWaitForZero && masterClockCount % m_LoopLengthInAudioBlocks == 0 && this->isLoopable() )
+	{
+		return true;
+	}
+	else if ( m_LoopWaitForZero && masterClockCount == 0 )
+	{
+		m_LoopWaitForZero = false;
+		return this->isLoopable();
+	}
+	else if ( m_LoopWaitForZero && ! this->isLoopable() && masterClockCount % m_LoopLengthInAudioBlocks == 0 )
 	{
 		return true;
 	}

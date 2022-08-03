@@ -35,8 +35,8 @@ class MidiTrack
 		unsigned int getLengthInMidiTrackEvents() const { return m_LengthInMidiTrackEvents; }
 		unsigned int getLoopEndInBlocks() const { return m_LoopEndInBlocks; }
 
-		void play (bool immediately = false); // only start when last loop is complete, unless immediatly = true
-		void stop (bool immediately = false);
+		void play (bool immediately = false, bool loopWaitForZero = false); // only start when last loop is complete, unless immediatly = true
+		void stop (bool immediately = false, bool loopWaitForZero = false);
 
 		void setIsSaved (const char* filenameDisplay);
 		bool isSaved() const { return m_IsSaved; }
@@ -69,6 +69,8 @@ class MidiTrack
 		bool 				m_IsPlaying;
 
 		bool 				m_JustFinished;
+
+		bool 				m_LoopWaitForZero; // only start/stop looping if master clock = 0
 };
 
 #endif // MIDITRACK_HPP

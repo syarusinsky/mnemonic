@@ -16,7 +16,8 @@ MidiTrack::MidiTrack (unsigned int cellX, unsigned int cellY, const MidiTrackEve
 	m_WaitToPlay( false ),
 	m_WaitToStop( false ),
 	m_IsPlaying( false ),
-	m_JustFinished( false )
+	m_JustFinished( false ),
+	m_LoopWaitForZero( false )
 {
 	// copy midi events from temp buffer
 	for ( unsigned int midiEventNum = 0; midiEventNum < lengthInMidiTrackEvents; midiEventNum++ )
@@ -33,16 +34,34 @@ MidiTrack::~MidiTrack()
 
 bool MidiTrack::waitForLoopStartOrEnd (const unsigned int timeCode)
 {
-	if ( m_WaitToPlay && timeCode % m_LoopEndInBlocks == 0 )
+	if ( ! m_LoopWaitForZero && m_WaitToPlay && timeCode % m_LoopEndInBlocks == 0 )
 	{
 		m_IsPlaying = true;
 		m_WaitToPlay = false;
 		return true;
 	}
-	else if ( m_WaitToStop && timeCode % m_LoopEndInBlocks == 0 )
+	else if ( ! m_LoopWaitForZero && m_WaitToStop && timeCode % m_LoopEndInBlocks == 0 )
 	{
 		m_IsPlaying = false;
 		m_WaitToStop = false;
+		return false;
+	}
+	else if ( m_LoopWaitForZero && timeCode == 0 )
+	{
+		m_LoopWaitForZero = false;
+
+		if ( m_WaitToPlay )
+		{
+			m_IsPlaying = true;
+			m_WaitToPlay = false;
+			return true;
+		}
+		else if ( m_WaitToStop )
+		{
+			m_IsPlaying = false;
+			m_WaitToStop = false;
+			return false;
+		}
 	}
 
 	return false;
@@ -73,7 +92,7 @@ void MidiTrack::addMidiEventsAtTimeCode( const unsigned int timeCode, std::vecto
 	}
 }
 
-void MidiTrack::play (bool immediately)
+void MidiTrack::play (bool immediately, bool loopWaitForZero)
 {
 	if ( immediately )
 	{
@@ -86,9 +105,10 @@ void MidiTrack::play (bool immediately)
 	}
 	m_WaitToStop = false;
 	m_JustFinished = false;
+	m_LoopWaitForZero = loopWaitForZero;
 }
 
-void MidiTrack::stop (bool immediately)
+void MidiTrack::stop (bool immediately, bool loopWaitForZero)
 {
 	if ( immediately )
 	{
@@ -101,6 +121,7 @@ void MidiTrack::stop (bool immediately)
 	}
 	m_WaitToPlay = false;
 	m_JustFinished = true;
+	m_LoopWaitForZero = loopWaitForZero;
 }
 
 void MidiTrack::setIsSaved (const char* filenameDisplay)

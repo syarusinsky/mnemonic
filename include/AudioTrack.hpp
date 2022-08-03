@@ -41,7 +41,7 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		bool isPlaying() { return m_FatEntry.getFileTransferInProgressFlagRef(); }
 		bool justFinished() { const bool justFinished = m_JustFinished; m_JustFinished = false; return justFinished; }
 
-		void setLoopable (const bool isLoopable);
+		void setLoopable (const bool isLoopable, const bool loopWaitForZero = false);
 		bool isLoopable() const { return m_IsLoopable; }
 		void setLoopLength (unsigned int currentMaxLoopLength);
 		bool shouldLoop (const unsigned int masterClockCount); // loops if clock count is divisible
@@ -73,6 +73,7 @@ class AudioTrack : public IBufferCallback<int16_t, true>
 		float 			m_AmplitudeR;
 
 		bool 			m_IsLoopable;
+		bool 			m_LoopWaitForZero; // only start/stop looping if master clock = 0
 
 		bool 			m_JustFinished; // false always until the track has just completed
 							// by reading this value it turns back to false
