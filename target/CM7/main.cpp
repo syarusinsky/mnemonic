@@ -116,6 +116,7 @@ class Eeprom_CAT24C64_Manager_ARMor8 : public Eeprom_CAT24C64_Manager
 		unsigned int m_InitCodeStartAddress = ( Eeprom_CAT24C64::EEPROM_SIZE * m_Eeproms.size() ) - sizeof( m_InitCode );
 };
 
+/*
 // this class is to retrieve parameter events from the m4 core via the parameter event queue and republish to the voice manager
 class MnemonicParameterEventBridge
 {
@@ -138,6 +139,7 @@ class MnemonicParameterEventBridge
 	private:
 		EventQueue<MnemonicParameterEvent>* m_EventQueuePtr;
 };
+*/
 
 // this class is to receive the published ui events from the voice manager and put them in the event queue for the m4 core to retrieve
 class MnemonicUiEventBridge : public IMnemonicUiEventListener
@@ -373,6 +375,7 @@ int main(void)
 
 	// i2c initialization
 	LLPD::i2c_master_setup( EEPROM_I2C_NUM, 0x308075AE );
+	LLPD::i2c_master_setup( I2C_NUM::I2C_2, 0x308075AE );
 	// LLPD::usart_log( LOGGING_USART_NUM, "i2c initialized..." );
 
 	// audio timer start
@@ -451,7 +454,7 @@ int main(void)
 	// prepare event queues
 	uint8_t* paramEventQueueMem = reinterpret_cast<uint8_t*>( D3_SRAM_BASE ) + ( D3_SRAM_UNUSED_OFFSET_IN_BYTES );
 	EventQueue<MnemonicParameterEvent>* paramEventQueue = reinterpret_cast<EventQueue<MnemonicParameterEvent>*>( paramEventQueueMem );
-	MnemonicParameterEventBridge paramEventBridge( paramEventQueue );
+	// MnemonicParameterEventBridge paramEventBridge( paramEventQueue );
 
 	// prepare audio manager
 	MnemonicAudioManager audioManager( sdCard, reinterpret_cast<uint8_t*>(D1_AXISRAM_BASE), 524288 );
@@ -472,7 +475,7 @@ int main(void)
 	{
 		LLPD::adc_perform_conversion_sequence( EFFECT_ADC_NUM );
 
-		paramEventBridge.processQueuedParameterEvents();
+		// paramEventBridge.processQueuedParameterEvents();
 
 		midiHandler.dispatchEvents();
 
