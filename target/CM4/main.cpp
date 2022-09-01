@@ -10,28 +10,6 @@
 #include "Font.hpp"
 #include "Smoll.h"
 
-// TODO remove after testing
-#include "Neotrellis.hpp"
-void onNeotrellisButtonHelperFunc2 (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
-{
-	listener->onNeotrellisButton( neotrellis, keyReleased, keyX, keyY );
-}
-class TestNeotrellisListener : public NeotrellisListener
-{
-	public:
-		void onNeotrellisButton (NeotrellisInterface* interface, bool released, uint8_t row, uint8_t column)
-		{
-			if ( ! released ) // pressed
-			{
-				interface->setColor( row, column, 50, 50, 255 );
-			}
-			else // released
-			{
-				interface->setColor( row, column, 0, 0, 0 );
-			}
-		}
-};
-
 // global variables
 volatile bool uiSetupComplete = false;
 MnemonicUiManager* volatile uiManagerPtr = nullptr;
@@ -197,15 +175,16 @@ int main(void)
 	}
 
 	// UI manager setup
-	// uint8_t i2cAddresses[] = { 0x2E, 0x2F, 0x30, 0x31 };
-	// Multitrellis multitrellis( 2, 2, I2C_NUM::I2C_2, i2cAddresses, GPIO_PORT::A, GPIO_PIN::PIN_8 );
-	// Font font( Smoll_data );
-	// MnemonicUiManager uiManager( SH1106_LCDWIDTH, SH1106_LCDHEIGHT, CP_FORMAT::MONOCHROME_1BIT, &multitrellis );
-	// uiManager.bindToButtonEventSystem();
-	// uiManager.bindToPotEventSystem();
-	// uiManager.bindToMnemonicUiEventSystem();
-	// uiManager.setFont( &font );
-	// uiManagerPtr = &uiManager;
+	LLPD::gpio_digital_input_setup( GPIO_PORT::A, GPIO_PIN::PIN_8, GPIO_PUPD::PULL_UP );
+	uint8_t i2cAddresses[] = { 0x2E, 0x2F, 0x30, 0x31 };
+	Multitrellis multitrellis( 2, 2, I2C_NUM::I2C_2, i2cAddresses, GPIO_PORT::A, GPIO_PIN::PIN_8 );
+	Font font( Smoll_data );
+	MnemonicUiManager uiManager( SH1106_LCDWIDTH, SH1106_LCDHEIGHT, CP_FORMAT::MONOCHROME_1BIT, &multitrellis );
+	uiManager.bindToButtonEventSystem();
+	uiManager.bindToPotEventSystem();
+	uiManager.bindToMnemonicUiEventSystem();
+	uiManager.setFont( &font );
+	uiManagerPtr = &uiManager;
 
 	// parameter event bridge setup
 	MnemonicParameterEventBridge paramEventBridge( paramEventQueue );
@@ -215,34 +194,16 @@ int main(void)
 	MnemonicUiEventBridge uiEventBridge( uiEventQueue );
 
 	// OLED setup
-	// Oled_Manager oled( uiManager.getFrameBuffer()->getPixels() );
+	Oled_Manager oled( uiManager.getFrameBuffer()->getPixels() );
 
 	uiSetupComplete = true;
 
-	// multirellis test TODO remove this after testing
-	LLPD::gpio_digital_input_setup( GPIO_PORT::A, GPIO_PIN::PIN_8, GPIO_PUPD::PULL_UP );
-	TestNeotrellisListener listener;
-	uint8_t i2cAddresses[] = { 0x2E, 0x2F, 0x30, 0x31 };
-	Multitrellis multitrellis( 2, 2, I2C_NUM::I2C_2, i2cAddresses, GPIO_PORT::A, GPIO_PIN::PIN_8 );
-	multitrellis.begin( &listener );
-	for ( unsigned int row = 0; row < 8; row++ )
-	{
-		for ( unsigned int column = 0; column < 8; column++ )
-		{
-			multitrellis.registerCallback( row, column, onNeotrellisButtonHelperFunc2 );
-			multitrellis.setColor( row, column, 0, 0, 0 );
-		}
-	}
-
 	while ( true )
 	{
-		// TODO remove after testing
-		multitrellis.pollForEvents();
-
 		uiEventBridge.processQueuedUiEvents();
 
-		// uiManager.processEffect1Btn( ! LLPD::gpio_input_get(EFFECT_BUTTON_PORT, EFFECT1_BUTTON_PIN) );
-		// uiManager.processEffect2Btn( ! LLPD::gpio_input_get(EFFECT_BUTTON_PORT, EFFECT2_BUTTON_PIN) );
+		uiManager.processEffect1Btn( ! LLPD::gpio_input_get(EFFECT_BUTTON_PORT, EFFECT1_BUTTON_PIN) );
+		uiManager.processEffect2Btn( ! LLPD::gpio_input_get(EFFECT_BUTTON_PORT, EFFECT2_BUTTON_PIN) );
 
 		uint16_t effect1Val = LLPD::adc_get_channel_value( EFFECT_ADC_NUM, EFFECT1_ADC_CHANNEL );
 		float effect1Percentage = static_cast<float>( effect1Val ) * ( 1.0f / 4095.0f );
