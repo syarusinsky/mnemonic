@@ -200,6 +200,8 @@ int main(void)
 
 	while ( true )
 	{
+		multitrellis.pollForEvents();
+
 		uiEventBridge.processQueuedUiEvents();
 
 		uiManager.processEffect1Btn( ! LLPD::gpio_input_get(EFFECT_BUTTON_PORT, EFFECT1_BUTTON_PIN) );

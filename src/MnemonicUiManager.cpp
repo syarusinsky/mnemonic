@@ -9,9 +9,9 @@
 
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
-void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
+void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyRow, uint8_t keyCol)
 {
-	listener->onNeotrellisButton( neotrellis, keyReleased, keyX, keyY );
+	listener->onNeotrellisButton( neotrellis, keyReleased, keyRow, keyCol );
 }
 
 MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, const CP_FORMAT& format, NeotrellisInterface* const neotrellis) :
@@ -567,8 +567,12 @@ void MnemonicUiManager::handleDoubleButtonPress()
 	}
 }
 
-void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyX, uint8_t keyY)
+void MnemonicUiManager::onNeotrellisButton (NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyRow, uint8_t keyCol)
 {
+	uint8_t stackedRowNum = neotrellis->getStackedRowNumInMultitrellis( reinterpret_cast<Multitrellis*>(m_Neotrellis) );
+	uint8_t stackedColNum = neotrellis->getStackedColNumInMultitrellis( reinterpret_cast<Multitrellis*>(m_Neotrellis) );
+	uint8_t keyX = keyCol + ( stackedColNum * NEO_TRELLIS_NUM_COLUMNS );
+	uint8_t keyY = keyRow + ( stackedRowNum * NEO_TRELLIS_NUM_ROWS );
 	if ( keyReleased && m_CurrentMenu == MNEMONIC_MENUS::STATUS )
 	{
 		CELL_STATE cellState = this->getCellState( keyX, keyY );

@@ -93,7 +93,7 @@ class FakeNeotrellis : public NeotrellisInterface
 
 				if ( m_Callbacks[index] != nullptr )
 				{
-					m_Callbacks[index]( m_NeotrellisListener, this, cellEvent.keyReleased, cellEvent.keyX, cellEvent.keyY );
+					m_Callbacks[index]( m_NeotrellisListener, this, cellEvent.keyReleased, cellEvent.keyY, cellEvent.keyX );
 				}
 			}
 
@@ -108,6 +108,9 @@ class FakeNeotrellis : public NeotrellisInterface
 
 		uint8_t getNumRows() override { return NEOTRELLIS_ROWS; }
 		uint8_t getNumCols() override { return NEOTRELLIS_COLS; }
+
+		uint8_t getStackedRowNumInMultitrellis (Multitrellis* multitrellis) override { return 0; }
+		uint8_t getStackedColNumInMultitrellis (Multitrellis* multitrellis) override { return 0; }
 
 	private:
 		std::vector<CellEvent> 	m_CellEvents;
