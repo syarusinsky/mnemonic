@@ -75,12 +75,12 @@ class FakeNeotrellis : public NeotrellisInterface
 			{
 				for ( unsigned int col = 0; col < NEOTRELLIS_COLS; col++ )
 				{
-					this->setColor( row, col, MNEMONIC_COLOR_INACTIVE );
+					this->setColor( col, row, MNEMONIC_COLOR_INACTIVE );
 				}
 			}
 		}
 
-		void setColor (uint8_t keyRow, uint8_t keyCol, uint8_t r, uint8_t g, uint8_t b) override
+		void setColor (uint8_t keyCol, uint8_t keyRow, uint8_t r, uint8_t g, uint8_t b) override
 		{
 			m_FakeButtons[keyRow][keyCol].setColour( juce::TextButton::buttonColourId, juce::Colour(r, g, b) );
 		}
@@ -89,18 +89,20 @@ class FakeNeotrellis : public NeotrellisInterface
 		{
 			for ( const CellEvent& cellEvent : m_CellEvents )
 			{
-				const uint8_t index = cellEvent.keyX + ( cellEvent.keyY * NEOTRELLIS_COLS );
+				uint8_t keyCol = cellEvent.keyX;
+				uint8_t keyRow = cellEvent.keyY;
+				const uint8_t index = keyCol + ( keyRow * NEOTRELLIS_COLS );
 
 				if ( m_Callbacks[index] != nullptr )
 				{
-					m_Callbacks[index]( m_NeotrellisListener, this, cellEvent.keyReleased, cellEvent.keyY, cellEvent.keyX );
+					m_Callbacks[index]( m_NeotrellisListener, this, cellEvent.keyReleased, keyCol, keyRow );
 				}
 			}
 
 			m_CellEvents.clear();
 		}
 
-		void registerCallback (uint8_t keyRow, uint8_t keyCol, NeotrellisCallback callback) override
+		void registerCallback (uint8_t keyCol, uint8_t keyRow, NeotrellisCallback callback) override
 		{
 			const uint8_t index = keyCol + ( keyRow * NEOTRELLIS_COLS );
 			m_Callbacks[index] = callback;

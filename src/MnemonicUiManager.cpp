@@ -9,7 +9,7 @@
 
 constexpr unsigned int SETTINGS_NUM_VISIBLE_ENTRIES = 6;
 
-void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyRow, uint8_t keyCol)
+void onNeotrellisButtonHelperFunc (NeotrellisListener* listener, NeotrellisInterface* neotrellis, bool keyReleased, uint8_t keyCol, uint8_t keyRow)
 {
 	listener->onNeotrellisButton( neotrellis, keyReleased, keyRow, keyCol );
 }
@@ -64,7 +64,7 @@ MnemonicUiManager::MnemonicUiManager (unsigned int width, unsigned int height, c
 	{
 		for ( unsigned int col = 0; col < m_Neotrellis->getNumCols(); col++ )
 		{
-			m_Neotrellis->registerCallback( row, col, onNeotrellisButtonHelperFunc );
+			m_Neotrellis->registerCallback( col, row, onNeotrellisButtonHelperFunc );
 			this->setCellStateAndColor( col, row, CELL_STATE::INACTIVE );
 		}
 	}
@@ -875,8 +875,8 @@ void MnemonicUiManager::onMnemonicUiEvent (const MnemonicUiEvent& event)
 		{
 			const int currentCol = event.getChannel();
 			const int previousCol = ( currentCol - 1 >= 0 ) ? currentCol - 1 : 7;
-			m_Neotrellis->setColor( 0, static_cast<uint8_t>(currentCol), MNEMONIC_COLOR_TRANSPORT_ACTIVE );
-			m_Neotrellis->setColor( 0, static_cast<uint8_t>(previousCol), MNEMONIC_COLOR_INACTIVE );
+			m_Neotrellis->setColor( static_cast<uint8_t>(currentCol), 0, MNEMONIC_COLOR_TRANSPORT_ACTIVE );
+			m_Neotrellis->setColor( static_cast<uint8_t>(previousCol), 0, MNEMONIC_COLOR_INACTIVE );
 		}
 
 			break;
@@ -1025,50 +1025,50 @@ void MnemonicUiManager::setCellStateAndColor (unsigned int cellX, unsigned int c
 
 	if ( state == CELL_STATE::INACTIVE )
 	{
-		m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_INACTIVE );
+		m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_INACTIVE );
 	}
 	else if ( state == CELL_STATE::LOADING )
 	{
-		m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_LOADING_FILE );
+		m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_LOADING_FILE );
 	}
 	else if ( state == CELL_STATE::NOT_PLAYING )
 	{
 		if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_1_NOT_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_1_NOT_PLAYING );
 		}
 		else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_2_NOT_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_2_NOT_PLAYING );
 		}
 		else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_ONESHOTS_NOT_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_AUDIO_ONESHOTS_NOT_PLAYING );
 		}
 		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_NOT_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_MIDI_NOT_PLAYING );
 		}
 	}
 	else if ( state == CELL_STATE::PLAYING )
 	{
 		if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_1_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_1_PLAYING );
 		}
 		else if ( row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_2_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_AUDIO_LOOPS_ROW_2_PLAYING );
 		}
 		else if ( row == MNEMONIC_ROW::AUDIO_ONESHOTS )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_AUDIO_ONESHOTS_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_AUDIO_ONESHOTS_PLAYING );
 		}
 		else if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_PLAYING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_MIDI_PLAYING );
 		}
 	}
 	else if ( state == CELL_STATE::RECORDING )
@@ -1076,7 +1076,7 @@ void MnemonicUiManager::setCellStateAndColor (unsigned int cellX, unsigned int c
 		if ( row == MNEMONIC_ROW::MIDI_CHAN_1_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_2_LOOPS
 				|| row == MNEMONIC_ROW::MIDI_CHAN_3_LOOPS || row == MNEMONIC_ROW::MIDI_CHAN_4_LOOPS )
 		{
-			m_Neotrellis->setColor( cellY, cellX, MNEMONIC_COLOR_MIDI_RECORDING );
+			m_Neotrellis->setColor( cellX, cellY, MNEMONIC_COLOR_MIDI_RECORDING );
 		}
 	}
 }

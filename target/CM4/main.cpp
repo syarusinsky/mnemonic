@@ -176,7 +176,7 @@ int main(void)
 
 	// UI manager setup
 	LLPD::gpio_digital_input_setup( GPIO_PORT::A, GPIO_PIN::PIN_8, GPIO_PUPD::PULL_UP );
-	uint8_t i2cAddresses[] = { 0x2E, 0x2F, 0x30, 0x31 };
+	uint8_t i2cAddresses[] = { 0x2F, 0x2E, 0x31, 0x30 };
 	Multitrellis multitrellis( 2, 2, I2C_NUM::I2C_2, i2cAddresses, GPIO_PORT::A, GPIO_PIN::PIN_8 );
 	Font font( Smoll_data );
 	MnemonicUiManager uiManager( SH1106_LCDWIDTH, SH1106_LCDHEIGHT, CP_FORMAT::MONOCHROME_1BIT, &multitrellis );
