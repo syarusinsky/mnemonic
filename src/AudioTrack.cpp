@@ -113,7 +113,7 @@ void AudioTrack::call (int16_t* writeBufferL, int16_t* writeBufferR)
 			}
 		}
 
-		if ( ! m_FatEntry.getFileTransferInProgressFlagRef() ) m_JustFinished = true;;
+		if ( ! m_FatEntry.getFileTransferInProgressFlagRef() ) m_JustFinished = true;
 	}
 
 	if ( this->shouldDecompress() )

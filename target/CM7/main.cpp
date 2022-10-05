@@ -478,6 +478,8 @@ int main(void)
 		midiHandler.dispatchEvents();
 
 		audioBuffer.pollToFillBuffers();
+
+		audioManager.publishUiEvents();
 	}
 }
 

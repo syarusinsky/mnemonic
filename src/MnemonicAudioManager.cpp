@@ -44,7 +44,7 @@ void MnemonicAudioManager::publishUiEvents()
 
 	for ( AudioTrack& audioTrack : m_AudioTracks )
 	{
-		if ( audioTrack.justFinished() )
+		if ( audioTrack.justFinished() && ! audioTrack.isLoopable() )
 		{
 			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
 								audioTrack.getCellX(), audioTrack.getCellY()) );
@@ -61,7 +61,7 @@ void MnemonicAudioManager::publishUiEvents()
 
 	for ( MidiTrack& midiTrack : m_MidiTracks )
 	{
-		if ( midiTrack.justFinished() )
+		if ( midiTrack.justFinished() ) // TODO will likely need to modify this like I did for the audio tracks
 		{
 			IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::MIDI_TRACK_FINISHED, nullptr, 0, 0,
 								midiTrack.getCellX(), midiTrack.getCellY()) );
