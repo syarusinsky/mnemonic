@@ -155,7 +155,7 @@ class MnemonicUiEventBridge : public IMnemonicUiEventListener
 		EventQueue<MnemonicUiEvent>* m_EventQueuePtr;
 };
 
-// these pins are unused for ARMor8, so we disable them as per the ST recommendations
+// these pins are unused for mnemonic, so we disable them as per the ST recommendations
 void disableUnusedPins()
 {
 	LLPD::gpio_output_setup( GPIO_PORT::A, GPIO_PIN::PIN_1, GPIO_PUPD::PULL_DOWN, GPIO_OUTPUT_TYPE::PUSH_PULL,
@@ -341,7 +341,7 @@ int main(void)
 	// LLPD::usart_init( LOGGING_USART_NUM, USART_WORD_LENGTH::BITS_8, USART_PARITY::NONE, USART_CONF::TX_AND_RX,
 	// 			USART_STOP_BITS::BITS_1, 120000000, 9600 );
 	// LLPD::usart_log( LOGGING_USART_NUM, "Ultra_FX_SYN starting up ----------------------------" );
-	LLPD::usart_init( MIDI_USART_NUM, USART_WORD_LENGTH::BITS_8, USART_PARITY::EVEN, USART_CONF::TX_AND_RX,
+	LLPD::usart_init( MIDI_USART_NUM, USART_WORD_LENGTH::BITS_8, USART_PARITY::NONE, USART_CONF::TX_AND_RX,
 					USART_STOP_BITS::BITS_1, 120000000, 31250 );
 
 	// audio timer setup (for 40 kHz sampling rate at 480 MHz timer clock)
@@ -457,6 +457,7 @@ int main(void)
 	// prepare audio manager
 	MnemonicAudioManager audioManager( sdCard, reinterpret_cast<uint8_t*>(D1_AXISRAM_BASE), 524288 );
 	audioManager.bindToMnemonicParameterEventSystem();
+	audioManager.bindToMidiEventSystem();
 
 	// connect to audio buffer
 	AudioBuffer<int16_t, true> audioBuffer;
@@ -478,6 +479,20 @@ int main(void)
 		midiHandler.dispatchEvents();
 
 		audioBuffer.pollToFillBuffers();
+
+		for ( const MidiEvent& midiEvent : audioManager.getMidiEventsToSendVec() )
+		{
+			uint8_t* midiRawData = midiEvent.getRawData();
+
+			if ( midiEvent.getNumBytes() > 1 )
+			{
+				for ( unsigned int byteNum = 0; byteNum < midiEvent.getNumBytes(); byteNum++ )
+				{
+					LLPD::usart_transmit( MIDI_USART_NUM, midiRawData[byteNum] );
+				}
+			}
+		}
+		audioManager.getMidiEventsToSendVec().clear();
 
 		audioManager.publishUiEvents();
 	}
