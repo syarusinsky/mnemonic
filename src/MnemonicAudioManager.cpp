@@ -570,11 +570,13 @@ void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cel
 		}
 
 		bool otherTrackIsPlayingOnThisLane = false;
+		unsigned int otherTrackPlayingCellX = 0;
 		for ( AudioTrack& audioTrack : m_AudioTracks )
 		{
 			if ( audioTrack.getCellY() == cellY && audioTrack.getCellX() != cellX && audioTrack.isPlaying() )
 			{
 				otherTrackIsPlayingOnThisLane = true;
+				otherTrackPlayingCellX = audioTrack.getCellX();
 				break;
 			}
 		}
@@ -597,7 +599,8 @@ void MnemonicAudioManager::playOrStopTrack (unsigned int cellX, unsigned int cel
 				// we should only have one track per lane playing at one time
 				if ( row == MNEMONIC_ROW::AUDIO_LOOPS_1 || row == MNEMONIC_ROW::AUDIO_LOOPS_2 )
 				{
-					audioTrack.setLoopable( false, otherTrackIsPlayingOnThisLane );
+					audioTrack.setLoopable( false, otherTrackIsPlayingOnThisLane
+									&& audioTrack.getCellX() == otherTrackPlayingCellX);
 					IMnemonicUiEventListener::PublishEvent( MnemonicUiEvent(UiEventType::AUDIO_TRACK_FINISHED, nullptr, 0, 0,
 										audioTrack.getCellX(), audioTrack.getCellY()) );
 				}
@@ -843,8 +846,7 @@ bool MnemonicAudioManager::goToDirectory (const Directory& directory)
 	if ( m_CurrentDirectory == Directory::AUDIO || m_CurrentDirectory == Directory::MIDI || m_CurrentDirectory == Directory::SCENE )
 	{
 		// go back to root directory
-		m_FileManager.selectEntry( 1 );
-		m_CurrentDirectory = Directory::ROOT;
+		m_FileManager.returnToRoot();
 	}
 
 	char dirName[FAT16_FILENAME_SIZE + 1] = { '\0' };
