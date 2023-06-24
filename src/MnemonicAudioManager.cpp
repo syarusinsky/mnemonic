@@ -242,14 +242,23 @@ void MnemonicAudioManager::saveMidiRecording (unsigned int cellX, unsigned int c
 			{
 				// get data necessary to reconstruct midi track
 				SharedData<MidiTrackEvent> midiData = midiTrack.getData();
-				unsigned int lenMd = midiTrack.getLengthInMidiTrackEvents();
-				unsigned int lenBk = midiTrack.getLoopEndInBlocks();
+				const unsigned int lenMd = midiTrack.getLengthInMidiTrackEvents();
+				const unsigned int lenBk = midiTrack.getLoopEndInBlocks();
+
+				const uint8_t lenMdByte1 = ( (lenMd >>  0) & 0xFF );
+				const uint8_t lenMdByte2 = ( (lenMd >>  8) & 0xFF );
+				const uint8_t lenMdByte3 = ( (lenMd >> 16) & 0xFF );
+				const uint8_t lenMdByte4 = ( (lenMd >> 24) & 0xFF );
+				const uint8_t lenBkByte1 = ( (lenBk >>  0) & 0xFF );
+				const uint8_t lenBkByte2 = ( (lenBk >>  8) & 0xFF );
+				const uint8_t lenBkByte3 = ( (lenBk >> 16) & 0xFF );
+				const uint8_t lenBkByte4 = ( (lenBk >> 24) & 0xFF );
 
 				// write 'header' data first
-				unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
+				const unsigned int sectorSizeInBytes = m_FileManager.getActiveBootSector()->getSectorSizeInBytes();
 				SharedData<uint8_t> data = SharedData<uint8_t>::MakeSharedData( sectorSizeInBytes, &m_AxiSramAllocator );
-				data[0] = lenMd; data[1] = lenMd >> 1; data[2] = lenMd >> 2; data[3] = lenMd >> 3;
-				data[4] = lenBk; data[5] = lenBk >> 1; data[6] = lenBk >> 2; data[7] = lenBk >> 3;
+				data[0] = lenMdByte1; data[1] = lenMdByte2; data[2] = lenMdByte3; data[3] = lenMdByte4;
+				data[4] = lenBkByte1; data[5] = lenBkByte2; data[6] = lenBkByte3; data[7] = lenBkByte4;
 				if ( ! m_FileManager.writeToEntry(entry, data) ) goto fail;
 
 				// write midi event data
@@ -1031,8 +1040,8 @@ bool MnemonicAudioManager::loadMidiFileHelper (unsigned int index, unsigned int 
 		SharedData<uint8_t> data = m_FileManager.getSelectedFileNextSector( entry );
 		unsigned int lenMd = 0;
 		unsigned int lenBk = 0;
-		lenMd = data[0] | data[1] << 1 | data[2] << 2 | data[3] << 3;
-		lenBk = data[4] | data[5] << 1 | data[6] << 2 | data[7] << 3;
+		lenMd = data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24;
+		lenBk = data[4] | data[5] << 8 | data[6] << 16 | data[7] << 24;
 
 		// load midi track events
 		uint8_t* midiTrackEventPrimArr = m_AxiSramAllocator.allocatePrimativeArray<uint8_t>( lenMd * sizeof(MidiTrackEvent) );
